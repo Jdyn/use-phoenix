@@ -2,9 +2,14 @@ import { Channel, Push } from "phoenix";
 import { useSocket } from "./PhoenixProvider";
 import { useEffect, useRef } from "react";
 
-type PushFunction = <PushResponse, PushAction extends { type: string; payload: Record<string, any> }>(
+type PushFunction = <
+  PushResponse,
+  PushAction extends { type: string; payload?: Record<string, any> | undefined }
+>(
   event: PushAction["type"],
-  payload: PushAction["payload"]
+  payload: PushAction["payload"] extends Record<string, any>
+    ? PushAction["payload"]
+    : Record<string, any>
 ) => Promise<PushResponse>;
 
 export function useChannel<Params extends Record<string, unknown> = {}, JoinPayload = null>(
@@ -43,5 +48,4 @@ const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
     if (!push) return reject("no push");
 
     push.receive("ok", resolve).receive("error", reject);
-    // .receive('timeout', reject('timeout'));
   });
