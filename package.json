@@ -1,0 +1,21 @@
+{
+  "name": "use-phoenix",
+  "version": "0.0.1",
+  "description": "React hooks for the Phoenix Framework",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jaden Moore",
+  "license": "MIT",
+  "dependencies": {
+    "phoenix": "^1.7.7"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/phoenix": "^1.6.0",
+    "@types/react": "^18.2.20"
+  }
+}
