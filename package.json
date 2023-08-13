@@ -1,6 +1,6 @@
 {
   "name": "use-phoenix",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha.0",
   "description": "React hooks for the Phoenix Framework",
   "main": "index.ts",
   "scripts": {
@@ -15,6 +15,7 @@
     "react": "^18.0.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^14.0.0",
     "@types/phoenix": "^1.6.0",
     "@types/react": "^18.2.20"
   }

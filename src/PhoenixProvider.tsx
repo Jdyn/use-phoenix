@@ -1,7 +1,9 @@
 import React, { useEffect } from "react";
-import { Socket, SocketConnectOption } from "phoenix";
+import { Channel, Socket, SocketConnectOption } from "phoenix";
 
-const PhoenixContext = React.createContext<Socket | null>(null);
+export type PhoenixSocket = Socket & { channels: Channel[] };
+
+const PhoenixContext = React.createContext<PhoenixSocket | null>(null);
 
 export const useSocket = () => React.useContext(PhoenixContext);
 
@@ -17,7 +19,7 @@ export type SocketProviderProps = {
 
 export function PhoenixProvider(props: SocketProviderProps) {
   const { children, connect, url, options } = props;
-  const socketRef = React.useRef<Socket | null>(null);
+  const socketRef = React.useRef<PhoenixSocket | null>(null);
 
   function closeSocket() {
     socketRef.current?.disconnect();
@@ -32,7 +34,7 @@ export function PhoenixProvider(props: SocketProviderProps) {
 
     if (!connect) return;
 
-    const socket = new Socket(url, options);
+    const socket = new Socket(url, options) as PhoenixSocket;
     socket.connect();
     socketRef.current = socket;
 
@@ -46,7 +48,7 @@ export function PhoenixProvider(props: SocketProviderProps) {
   }, [connect, url, options]);
 
   return <PhoenixContext.Provider value={socketRef.current}>{children}</PhoenixContext.Provider>;
-};
+}
 
 PhoenixProvider.defaultProps = {
   options: {},
