@@ -1,53 +1,69 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Channel, Socket, SocketConnectOption } from "phoenix";
+import useLatest from "./useLatest";
 
 export type PhoenixSocket = Socket & { channels: Channel[] };
 
-const PhoenixContext = React.createContext<PhoenixSocket | null>(null);
+export type ConnectFunction = (url: string, options: Partial<SocketConnectOption>) => void;
 
-export const useSocket = () => React.useContext(PhoenixContext);
+const PhoenixContext = React.createContext<{
+  socket: PhoenixSocket | null;
+  connect: ConnectFunction;
+}>({
+  socket: null,
+  connect: () => {},
+});
+
+export const useSocket = (): {
+  socket: PhoenixSocket | null;
+  connect: ConnectFunction;
+} => React.useContext(PhoenixContext);
 
 export type SocketProviderProps = {
   children?: React.ReactNode;
-  options?: SocketConnectOption;
-  url: string;
-  connect?: boolean;
+  options?: Partial<SocketConnectOption>;
+  url?: string;
   onOpen?: () => void;
   onClose?: () => void;
   onError?: () => void;
 };
 
 export function PhoenixProvider(props: SocketProviderProps) {
-  const { children, connect, url, options } = props;
-  const socketRef = React.useRef<PhoenixSocket | null>(null);
-
-  function closeSocket() {
-    socketRef.current?.disconnect();
-    socketRef.current = null;
-  }
+  const { children, url, options } = props;
+  const [socket, set] = useState<PhoenixSocket | null>(null);
+  const socketRef = useLatest(socket);
 
   useEffect(() => {
+    if (!url) return;
+
+    connect(url, options);
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, [url, options]);
+
+  const connect = useCallback((url: string, options?: Partial<SocketConnectOption>): void => {
     const { onOpen, onClose, onError } = props;
+
     if (socketRef.current) {
-      closeSocket();
+      socketRef.current?.disconnect();
     }
 
-    if (!connect) return;
-
-    const socket = new Socket(url, options) as PhoenixSocket;
+    const socket = new Socket(url, options ?? {}) as PhoenixSocket;
     socket.connect();
-    socketRef.current = socket;
+    set(socket);
 
     if (onOpen) socket.onOpen(onOpen);
     if (onClose) socket.onClose(onClose);
     if (onError) socket.onError(onError);
+  }, []);
 
-    return () => {
-      closeSocket();
-    };
-  }, [connect, url, options]);
-
-  return <PhoenixContext.Provider value={socketRef.current}>{children}</PhoenixContext.Provider>;
+  return (
+    <PhoenixContext.Provider value={{ socket: socketRef.current, connect }}>
+      {children}
+    </PhoenixContext.Provider>
+  );
 }
 
 PhoenixProvider.defaultProps = {

@@ -1,12 +1,13 @@
 import { useSocket } from "../PhoenixProvider";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Channel, Push, PushFunction, UseChannel } from ".";
 import useLatest from "../useLatest";
 
 export const useChannel: UseChannel = (topic, options) => {
   const { params, onJoin } = options || {};
-  const socket = useSocket();
-  const channelRef = useRef<Channel | null>(null);
+  const { socket } = useSocket();
+  const [channel, set] = useState<Channel | null>(null);
+  const channelRef = useLatest(channel);
   const onJoinRef = useLatest(onJoin);
 
   useEffect(() => {
@@ -17,11 +18,11 @@ export const useChannel: UseChannel = (topic, options) => {
       onJoinRef.current?.(response);
     });
 
-    channelRef.current = channel;
+    set(channel);
 
     return () => {
       channel.leave();
-      channelRef.current = null;
+      set(null);
     };
   }, [socket, topic, params]);
 
