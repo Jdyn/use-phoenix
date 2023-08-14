@@ -1,2 +1,2 @@
-export * from "./useEvent";
 export * from "./types";
+export * from "./useEvent";

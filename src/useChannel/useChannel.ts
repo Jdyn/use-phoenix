@@ -1,21 +1,26 @@
-import { useSocket } from "../PhoenixProvider";
-import { useEffect, useRef, useState } from "react";
-import { Channel, Push, PushFunction, UseChannel } from ".";
-import useLatest from "../useLatest";
+import { useEffect, useState } from "react";
 
-export const useChannel: UseChannel = (topic, options) => {
+import useLatest from "../useLatest";
+import { usePhoenix } from "../usePhoenix";
+
+import { Channel, ChannelOptions, ChannelParams, Push, PushFunction } from ".";
+
+export function useChannel<TParams extends ChannelParams, TJoinResponse>(
+  topic: string,
+  options?: ChannelOptions<TParams, TJoinResponse>
+): [Channel | null, PushFunction] {
   const { params, onJoin } = options || {};
-  const { socket } = useSocket();
+  const { socket } = usePhoenix();
   const [channel, set] = useState<Channel | null>(null);
   const channelRef = useLatest(channel);
-  const onJoinRef = useLatest(onJoin);
+  const joinHandler = useLatest(onJoin);
 
   useEffect(() => {
-    if (socket === null) return;
+    if (socket === null) {return;}
 
     const channel = socket.channel(topic, params);
-    channel.join().receive("ok", (response) => {
-      onJoinRef.current?.(response);
+    channel.join().receive("ok", (response: TJoinResponse) => {
+      joinHandler.current?.(response);
     });
 
     set(channel);
@@ -24,17 +29,17 @@ export const useChannel: UseChannel = (topic, options) => {
       channel.leave();
       set(null);
     };
-  }, [socket, topic, params]);
+  }, [socket, topic, params, joinHandler]);
 
   const push: PushFunction = (event, payload) =>
     pushPromise(channelRef.current?.push(event, payload ?? {}));
 
   return [channelRef.current, push];
-};
+}
 
 const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
   new Promise((resolve, reject) => {
-    if (!push) return reject("no push");
+    if (!push) {return reject("no push");}
 
     push.receive("ok", resolve).receive("error", reject);
   });
