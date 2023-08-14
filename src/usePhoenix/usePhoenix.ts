@@ -12,9 +12,6 @@ export const usePhoenix = (): {
   connect: ConnectFunction;
 } => {
   const context = React.useContext(PhoenixContext);
-  if (context === null) {
-    throw new Error('usePhoenix must be used within a PhoenixProvider');
-  }
-
+  if (context === null) throw new Error('usePhoenix must be used within a PhoenixProvider');
   return context;
 };
