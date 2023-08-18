@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Channel } from 'phoenix';
 
 import useLatest from '../useLatest';
-import { PhoenixSocket, usePhoenix } from '../usePhoenix';
+import { usePhoenix } from '../usePhoenix';
 
 import { UseEvent } from './types';
 
@@ -11,16 +11,38 @@ export const useEvent: UseEvent = (identifier, event, listener) => {
   const handler = useLatest(listener);
   const { socket } = usePhoenix();
 
-  useEffect(() => {
-    if (channel === null) {
-      return;
-    }
+  const upsert = useCallback(
+    (topic: string): Channel | null => {
+      if (socket) {
+        let channel = socket.channels.find((channel) => channel.topic === topic);
+        if (channel) return channel;
 
-    const ref = channel.on(event, (message) => {
-      if (typeof handler.current !== 'function') {
-        return;
+        channel = socket.channel(topic, {});
+        channel.join();
+        return channel;
       }
 
+      return null;
+    },
+    [socket]
+  );
+
+  useEffect(() => {
+    if (typeof identifier == 'string') {
+      set(upsert(identifier));
+      return;
+    } else if (identifier instanceof Channel) {
+      set(identifier);
+    } else {
+      throw new Error('Invalid identifier. Must be a topic string or Channel.');
+    }
+  }, [identifier, upsert]);
+
+  useEffect(() => {
+    if (channel === null) return;
+
+    const ref = channel.on(event, (message) => {
+      if (typeof handler.current !== 'function') return;
       handler.current(message);
     });
 
@@ -29,26 +51,4 @@ export const useEvent: UseEvent = (identifier, event, listener) => {
       set(null);
     };
   }, [channel, event, handler]);
-
-  const fetchOrCreateChannel = useCallback(
-    (identifier: string, socket: PhoenixSocket): Channel | null => {
-      let channel = socket.channels.find((channel) => channel.topic === identifier);
-      if (channel) {
-        return channel;
-      }
-
-      channel = socket.channel(identifier, {});
-      channel.join();
-      return channel;
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (socket && typeof identifier == 'string') {
-      set(fetchOrCreateChannel(identifier, socket));
-    } else if (socket && typeof identifier === 'object') {
-      set(identifier);
-    }
-  }, [fetchOrCreateChannel, identifier, socket]);
 };
