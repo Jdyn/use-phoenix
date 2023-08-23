@@ -14,8 +14,8 @@ export type PhoenixProviderProps = {
   onError?: () => void;
 };
 
-export function PhoenixProvider(props: PhoenixProviderProps) {
-  const { children, url, options, onOpen, onClose, onError } = props;
+export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps) {
+  const { children, onOpen, onClose, onError } = props;
 
   const [socket, set] = useState<PhoenixSocket | null>(null);
   const socketRef = useLatest(socket);
