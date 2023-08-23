@@ -10,7 +10,7 @@ export type UsePresenceProps<T, M> = {
 
 export function usePresence<PayloadType, MetasType = Metas>(
   topic: string | undefined
-): Merge<PayloadType, {id: string, metas: MetasType}>[] {
+): Merge<PayloadType, { id: string; metas: MetasType }>[] {
   const [_presence, _setPresence] = useState<PresenceState<PayloadType, MetasType>>({});
   const { socket } = usePhoenix();
 
@@ -33,16 +33,31 @@ export function usePresence<PayloadType, MetasType = Metas>(
       });
 
       channel.join();
+
+      return () => {
+        channel.leave();
+        _setPresence({});
+      };
     }
+
+    return () => {};
   }, [socket, _setPresence, topic]);
 
   const items = useMemo(
     () =>
       _presence
-        ? Object.keys(_presence).map((key: string) => ({ id: key, ..._presence[key] }))
+        ? Object.keys(_presence).map((key: string) => {
+            let metas = _presence[key].metas;
+
+            if (Array.isArray(metas) && metas.length === 1) {
+              metas = metas[0];
+            }
+
+            return { id: key, ..._presence[key], metas };
+          })
         : [],
     [_presence]
-  ) as Merge<PayloadType, {id: string, metas: MetasType}>[];
+  ) as Merge<PayloadType, { id: string; metas: MetasType }>[];
 
   return items;
 }
