@@ -8,7 +8,7 @@ export interface EventAction {
 export type UseEventListener<EventResponse> = (response: EventResponse) => void;
 
 export type UseEvent = <Event extends EventAction>(
-  channel: Channel | string | null,
+  channel: Channel | string | undefined,
   event: Event['event'],
   listener: (response: Event['response']) => void
 ) => void;

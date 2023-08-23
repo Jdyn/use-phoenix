@@ -1,5 +1,4 @@
 import React from 'react';
-
 import { ConnectFunction, PhoenixSocket } from './types';
 
 export const PhoenixContext = React.createContext<{

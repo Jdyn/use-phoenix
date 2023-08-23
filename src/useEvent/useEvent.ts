@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Channel } from 'phoenix';
-
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
-
+import { findChannel } from '../util';
 import { UseEvent } from './types';
 
 export const useEvent: UseEvent = (identifier, event, listener) => {
@@ -14,7 +13,7 @@ export const useEvent: UseEvent = (identifier, event, listener) => {
   const upsert = useCallback(
     (topic: string): Channel | null => {
       if (socket) {
-        let channel = socket.channels.find((channel) => channel.topic === topic);
+        let channel = findChannel(socket, topic);
         if (channel) return channel;
 
         channel = socket.channel(topic, {});
@@ -28,7 +27,9 @@ export const useEvent: UseEvent = (identifier, event, listener) => {
   );
 
   useEffect(() => {
-    if (typeof identifier == 'string') {
+    if (typeof identifier == 'undefined') {
+      return;
+    } else if (typeof identifier == 'string') {
       set(upsert(identifier));
       return;
     } else if (identifier instanceof Channel) {

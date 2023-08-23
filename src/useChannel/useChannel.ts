@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-
-import useLatest from "../useLatest";
-import { usePhoenix } from "../usePhoenix";
-
-import { Channel, ChannelOptions, ChannelParams, Push, PushFunction } from ".";
+import { useEffect, useState } from 'react';
+import useLatest from '../useLatest';
+import { usePhoenix } from '../usePhoenix';
+import { Channel, ChannelOptions, ChannelParams, Push, PushFunction } from '.';
 
 export function useChannel<TParams extends ChannelParams, TJoinResponse>(
   topic: string,
@@ -16,10 +14,12 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
   const joinHandler = useLatest(onJoin);
 
   useEffect(() => {
-    if (socket === null) {return;}
+    if (socket === null) {
+      return;
+    }
 
     const channel = socket.channel(topic, params);
-    channel.join().receive("ok", (response: TJoinResponse) => {
+    channel.join().receive('ok', (response: TJoinResponse) => {
       joinHandler.current?.(response);
     });
 
@@ -39,7 +39,9 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 
 const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
   new Promise((resolve, reject) => {
-    if (!push) {return reject("no push");}
+    if (!push) {
+      return reject('no push');
+    }
 
-    push.receive("ok", resolve).receive("error", reject);
+    push.receive('ok', resolve).receive('error', reject);
   });

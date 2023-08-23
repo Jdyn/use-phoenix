@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Socket, SocketConnectOption } from 'phoenix';
-
-import { PhoenixSocket } from './usePhoenix/types';
 import useLatest from './useLatest';
 import { PhoenixContext } from './usePhoenix';
+import { PhoenixSocket } from './usePhoenix/types';
+import { Socket, SocketConnectOption } from 'phoenix';
+import React, { useCallback, useEffect, useState } from 'react';
 
 export type PhoenixProviderProps = {
   url?: string;
@@ -51,13 +50,6 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
       socket.disconnect();
     };
   }, [url, options, connect]);
-
-  useEffect(() => {
-    const ref = socketRef.current;
-    return () => {
-      ref?.disconnect();
-    };
-  }, [socketRef]);
 
   return (
     <PhoenixContext.Provider value={{ socket: socketRef.current, connect }}>
