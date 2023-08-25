@@ -12,5 +12,6 @@ export const usePhoenix = (): {
 } => {
   const context = React.useContext(PhoenixContext);
   if (context === null) throw new Error('usePhoenix must be used within a PhoenixProvider');
+	// console.log(context.socket?.channels);
   return context;
 };

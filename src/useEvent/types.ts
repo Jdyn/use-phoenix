@@ -1,4 +1,4 @@
-export interface EventAction {
+export type EventAction = {
   event: string;
   response: any;
 }

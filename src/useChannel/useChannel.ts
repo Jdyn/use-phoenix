@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
+import { findChannel } from '../util';
 import { Channel, ChannelOptions, ChannelParams, Push, PushFunction } from '.';
 
 export function useChannel<TParams extends ChannelParams, TJoinResponse>(
   topic: string,
   options?: ChannelOptions<TParams, TJoinResponse>
-): [Channel | null, PushFunction] {
+): [Channel | null, PushFunction, () => void] {
   const { params, onJoin } = options || {};
   const { socket } = usePhoenix();
   const [channel, set] = useState<Channel | null>(null);
@@ -14,9 +15,8 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
   const joinHandler = useLatest(onJoin);
 
   useEffect(() => {
-    if (socket === null) {
-      return;
-    }
+    if (socket === null) return;
+    if (findChannel(socket, topic)) return;
 
     const channel = socket.channel(topic, params);
     channel.join().receive('ok', (response: TJoinResponse) => {
@@ -24,17 +24,17 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
     });
 
     set(channel);
-
-    return () => {
-      channel.leave();
-      set(null);
-    };
   }, [socket, topic, params, joinHandler]);
 
   const push: PushFunction = (event, payload) =>
     pushPromise(channelRef.current?.push(event, payload ?? {}));
 
-  return [channelRef.current, push];
+  const leave = () => {
+    channel?.leave();
+    set(null);
+  }
+
+  return [channelRef.current, push, leave];
 }
 
 const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
