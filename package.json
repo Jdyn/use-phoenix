@@ -3,6 +3,10 @@
   "version": "0.0.1-alpha.0",
   "description": "React hooks for the Phoenix Framework",
   "main": "index.ts",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Jdyn/use-phoenix.git"
+	},
   "scripts": {
     "test": "jest",
     "format": "eslint --fix --ext .ts,.tsx ."

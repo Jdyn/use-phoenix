@@ -29,10 +29,17 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
   const push: PushFunction = (event, payload) =>
     pushPromise(channelRef.current?.push(event, payload ?? {}));
 
-  const leave = () => {
-    channel?.leave();
-    set(null);
-  }
+  /*
+   * Allows you to leave the channel.
+   * useChannel does not automatically leave the channel when the component unmounts by default.
+   *
+   */
+  const leave = useCallback(() => {
+    if (channel instanceof Channel) {
+      channel.leave();
+      set(null);
+    }
+  }, [channel]);
 
   return [channelRef.current, push, leave];
 }
