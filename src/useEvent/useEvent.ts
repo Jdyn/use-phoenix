@@ -31,7 +31,7 @@ import { EventAction } from './types';
  * @param listener - The callback function to invoke when the event is received.
  */
 export function useEvent<Event extends EventAction>(
-  identifier: Channel | string | undefined,
+  identifier: Channel | string | undefined | null,
   event: Event['event'],
   listener: (response: Event['response']) => void
 ) {
@@ -60,7 +60,7 @@ export function useEvent<Event extends EventAction>(
      * If the identifier is undefined, it indicates that a boolean expression was supplied
      * and the condition was not met. This prevents the socket from being initialized
      */
-    if (typeof identifier == 'undefined') {
+    if (typeof identifier == 'undefined' || identifier === null) {
       return;
     } else if (typeof identifier == 'string') {
       set(upsert(identifier));

@@ -1,7 +1,7 @@
 import useLatest from './useLatest';
 import { PhoenixContext } from './usePhoenix';
-import { PhoenixSocket } from './usePhoenix/types';
-import { Socket, SocketConnectOption } from 'phoenix';
+import { PhoenixSocket, SocketConnectOption } from './usePhoenix/types';
+import { Socket } from 'phoenix';
 import React, { useCallback, useEffect, useState } from 'react';
 
 export type PhoenixProviderProps = {
