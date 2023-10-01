@@ -33,11 +33,12 @@ import { EventAction } from './types';
 export function useEvent<Event extends EventAction>(
   identifier: Channel | string | undefined | null,
   event: Event['event'],
-  listener: (response: Event['response']) => void
-) {
+  listener?: (response: Event['response']) => void
+): { data: Event['response'] | null } {
   const { socket } = usePhoenix();
   const handler = useLatest(listener);
   const [channel, set] = useState<Channel | null>(null);
+	const [data, setData] = useState<Event['response'] | null>(null);
 
   const upsert = useCallback(
     (topic: string): Channel | null => {
@@ -76,6 +77,7 @@ export function useEvent<Event extends EventAction>(
     if (channel === null) return;
 
     const ref = channel.on(event, (message) => {
+			setData(message);
       if (typeof handler.current !== 'function') return;
       handler.current(message);
     });
@@ -85,4 +87,6 @@ export function useEvent<Event extends EventAction>(
       set(null);
     };
   }, [channel, event, handler]);
+
+	return { data }
 }

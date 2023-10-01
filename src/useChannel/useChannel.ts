@@ -1,18 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
+import { Channel, ChannelMeta, ChannelOptions, ChannelParams, Push, PushFunction } from '.';
 import { findChannel } from '../util';
-import { Channel, ChannelOptions, ChannelParams, Push, PushFunction } from '.';
+import { Merge } from '../usePresence';
 
 export function useChannel<TParams extends ChannelParams, TJoinResponse>(
   topic: string,
-  options?: ChannelOptions<TParams, TJoinResponse>
-): [Channel | null, PushFunction, () => void] {
-  const { params, onJoin } = options || {};
+  options?: ChannelOptions<TParams>
+): [Channel | null, Merge<ChannelMeta<TJoinResponse>, { leave: () => void; push: PushFunction }>] {
   const { socket } = usePhoenix();
+
   const [channel, set] = useState<Channel | null>(null);
+	const [meta, setMeta] = useState<ChannelMeta<TJoinResponse>>({
+		data: null,
+		isSuccess: false,
+		isLoading: true,
+		isError: false,
+		error: null,
+	});
+
   const channelRef = useLatest(channel);
-  const joinHandler = useLatest(onJoin);
+
+	const { params } = options || {};
 
   useEffect(() => {
     if (socket === null) return;
@@ -20,11 +30,35 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 
     const channel = socket.channel(topic, params);
     channel.join().receive('ok', (response: TJoinResponse) => {
-      joinHandler.current?.(response);
-    });
+			setMeta({
+				isSuccess: true,
+				isLoading: false,
+				isError: false,
+				error: null,
+				data: response
+			});
+    }).receive('error', (error) => {
+			setMeta({
+				isSuccess: false,
+				isLoading: false,
+				isError: true,
+				error,
+				data: null
+			});
+		})
+		.receive('timeout', () => {
+			setMeta({
+				isSuccess: false,
+				isLoading: false,
+				isError: true,
+				error: 'timeout',
+				data: null
+				});
+		});
 
     set(channel);
-  }, [socket, topic, params, joinHandler]);
+
+  }, [socket, topic, params]);
 
   const push: PushFunction = (event, payload) =>
     pushPromise(channelRef.current?.push(event, payload ?? {}));
@@ -41,7 +75,7 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
     }
   }, [channel]);
 
-  return [channelRef.current, push, leave];
+  return [channelRef.current, { leave, push, ...meta}];
 }
 
 const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
