@@ -1,50 +1,41 @@
 {
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "react-hooks", "simple-import-sort"],
-  "extends": [
-    "plugin:react/recommended",
-    "plugin:@typescript-eslint/recommended"
-  ],
-  "parserOptions": {
-    "ecmaVersion": 2020,
-    "sourceType": "module",
-    "ecmaFeatures": {
-      "jsx": true
-    }
-  },
-  "rules": {
-    "curly": ["error", "multi-line"],
-    "no-extra-boolean-cast": "error",
-    "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/no-empty-function": "off",
-    "@typescript-eslint/ban-ts-comment": "warn",
-    "@typescript-eslint/ban-types": "off",
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-object-literal-type-assertion": "off",
-    "@typescript-eslint/no-unused-vars": [
-      "warn",
-      { "ignoreRestSiblings": true }
-    ],
-    "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "error",
-    "react/display-name": "warn",
-    "react/prop-types": "off",
-    "no-console": ["error"]
-  },
-  "overrides": [
-    {
-      "files": ["*.test.ts", "*.test.tsx"],
-      "rules": {
-        // Allow testing runtime errors to suppress TS errors
-        "@typescript-eslint/ban-ts-comment": "off"
-      }
-    }
-  ],
-  "settings": {
-    "react": {
-      "pragma": "React",
-      "version": "detect"
-    }
-  }
+	"parser": "@typescript-eslint/parser",
+	"plugins": [
+		"@typescript-eslint",
+		"react-hooks",
+		"simple-import-sort"
+	],
+	"extends": [
+		"eslint:recommended",
+		"plugin:react/recommended",
+		"plugin:react-hooks/recommended",
+		"plugin:@typescript-eslint/recommended",
+		"prettier"
+	],
+	"parserOptions": {
+		"ecmaVersion": 2020,
+		"sourceType": "module",
+		"ecmaFeatures": {
+			"jsx": true
+		}
+	},
+	"rules": {},
+	"overrides": [
+		{
+			"files": [
+				"*.test.ts",
+				"*.test.tsx"
+			],
+			"rules": {
+				// Allow testing runtime errors to suppress TS errors
+				"@typescript-eslint/ban-ts-comment": "off"
+			}
+		}
+	],
+	"settings": {
+		"react": {
+			"pragma": "React",
+			"version": "detect"
+		}
+	}
 }

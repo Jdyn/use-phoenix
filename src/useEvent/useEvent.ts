@@ -31,62 +31,62 @@ import { EventAction } from './types';
  * @param listener - The callback function to invoke when the event is received.
  */
 export function useEvent<Event extends EventAction>(
-  identifier: Channel | string | undefined | null,
-  event: Event['event'],
-  listener?: (response: Event['response']) => void
-): { data: Event['response'] | null } {
-  const { socket } = usePhoenix();
-  const handler = useLatest(listener);
-  const [channel, set] = useState<Channel | null>(null);
-	const [data, setData] = useState<Event['response'] | null>(null);
+	identifier: Channel | string | undefined | null,
+	event: Event['event'],
+	listener?: (response: Event['data']) => void
+): { data: Event['data'] | null } {
+	const { socket } = usePhoenix();
+	const handler = useLatest(listener);
+	const [channel, set] = useState<Channel | null>(null);
+	const [data, setData] = useState<Event['data'] | null>(null);
 
-  const upsert = useCallback(
-    (topic: string): Channel | null => {
-      if (socket) {
-        let channel = findChannel(socket, topic);
-        if (channel) return channel;
+	const upsert = useCallback(
+		(topic: string): Channel | null => {
+			if (socket) {
+				let channel = findChannel(socket, topic);
+				if (channel) return channel;
 
-        channel = socket.channel(topic, {});
-        channel.join();
-        return channel;
-      }
+				channel = socket.channel(topic, {});
+				channel.join();
+				return channel;
+			}
 
-      return null;
-    },
-    [socket]
-  );
+			return null;
+		},
+		[socket]
+	);
 
-  useEffect(() => {
-    /*
-     * If the identifier is undefined, it indicates that a boolean expression was supplied
-     * and the condition was not met. This prevents the socket from being initialized
-     */
-    if (typeof identifier == 'undefined' || identifier === null) {
-      return;
-    } else if (typeof identifier == 'string') {
-      set(upsert(identifier));
-      return;
-    } else if (identifier instanceof Channel) {
-      set(identifier);
-    } else {
-      throw new Error('Invalid identifier. Must be a topic string or Channel.');
-    }
-  }, [identifier, upsert]);
+	useEffect(() => {
+		/*
+		 * If the identifier is undefined, it indicates that a boolean expression was supplied
+		 * and the condition was not met. This prevents the socket from being initialized
+		 */
+		if (typeof identifier == 'undefined' || identifier === null) {
+			return;
+		} else if (typeof identifier == 'string') {
+			set(upsert(identifier));
+			return;
+		} else if (identifier instanceof Channel) {
+			set(identifier);
+		} else {
+			throw new Error('Invalid identifier. Must be a topic string or Channel.');
+		}
+	}, [identifier, upsert]);
 
-  useEffect(() => {
-    if (channel === null) return;
+	useEffect(() => {
+		if (channel === null) return;
 
-    const ref = channel.on(event, (message) => {
+		const ref = channel.on(event, (message) => {
 			setData(message);
-      if (typeof handler.current !== 'function') return;
-      handler.current(message);
-    });
+			if (typeof handler.current !== 'function') return;
+			handler.current(message);
+		});
 
-    return () => {
-      channel.off(event, ref);
-      set(null);
-    };
-  }, [channel, event, handler]);
+		return () => {
+			channel.off(event, ref);
+			set(null);
+		};
+	}, [channel, event, handler]);
 
-	return { data }
+	return { data };
 }

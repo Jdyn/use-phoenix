@@ -1,2 +1,2 @@
-export * from './types'
-export * from './useChannel'
+export * from './types';
+export * from './useChannel';
