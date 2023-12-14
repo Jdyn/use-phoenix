@@ -1,9 +1,9 @@
 export type { Push } from 'phoenix';
 export { Channel } from 'phoenix';
 
-export interface PushEvent {
-	type: string;
-	payload?: Record<string, any>;
+export type PushEvent = {
+	event: string;
+	data?: Record<string, any>;
 }
 
 export type ChannelStatus =
@@ -23,10 +23,10 @@ export type ChannelMeta<TJoinResponse> = {
 	error: any;
 };
 
-export type PushFunction = <E extends PushEvent, PushResponse = void>(
-	event: E extends { type: string } ? PushEvent['type'] : void,
-	payload?: E extends PushEvent['payload'] ? PushEvent['payload'] : void
-) => Promise<PushResponse>;
+export type PushFunction = (<Event extends PushEvent, PushResponse = any>(
+	event: Event['event'],
+	data?: Event['data']
+) => Promise<PushResponse>);
 
 export type ChannelOptions<Params = undefined> = {
 	params?: Params extends Record<string, any> ? Params : undefined;

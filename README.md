@@ -1,14 +1,6 @@
 # use-phoenix
-
-## Note
-
-If you happen to come across this package somehow, note this is a very early stage and things probably don't work entirely. This has mainly been used internally by me and does not support or guarantee a lot of functionality outside of the "happy path" of Phoenix channels usage. The API is very subject to change quickly.
-
-If you do use this package, I would love to hear how it is working for you and any issues you find.
-
-## Usage
-
-Usage of the hooks requires a `PhoenixProvider` to be placed somewhere within your application
+## Connecting to your Phoenix Socket
+Wrap the intended part of your application with `PhoenixProvider`.
 
 ```tsx
 // App.tsx
@@ -19,80 +11,83 @@ const Application = () => {
 };
 ```
 
-There are two ways to connect to your Phoenix server:
+Passing a `url` and params to your `PhoenixProvder` will connect to your socket instantly **on mount**:
+```tsx
+return (
+<PhoenixProvider
+	url="ws://localhost:4000/socket"
+	options={{
+		params: { token: 'xyz' }
+	}}
+>
+	...
+</PhoenixProvider>
+);
+```
+Using the `usePhoenix` hook to connect lazily using `connect`:
 
-1. Passing a `url` prop to your `PhoenixProvder` along with your necessary parameters:
-   ```tsx
-   return (
-   	<PhoenixProvider
-   		url="ws://localhost:4000/socket"
-   		options={{
-   			params: { token: 'xyz' }
-   		}}
-   	>
-   		...
-   	</PhoenixProvider>
-   );
-   ```
-2. utilizing the `usePhoenix` hook to connect lazily:
+To use this option **do not pass a `url`** into `PhoenixProvider`:
+```tsx
+// App.tsx
+return <PhoenixProvider>...</PhoenixProvider>;
+```
 
-   Provide your `PhoenixProvider` **without** a `url`:
-
-   ```tsx
-   // App.tsx
-   return <PhoenixProvider>...</PhoenixProvider>;
-   ```
-
-   Later on when you would like to connect the socket:
-
-   ```ts
-   // Component.tsx
-   import { usePhoenix } from 'use-phoenix';
-
-   const Component = () => {
-   	const { socket, connect } = usePhoenix();
-
-   	useEffect(() => {
-   		connect('ws://localhost:4000/socket', {
-   			params: { token: 'xyz' }
-   		});
-   	}, [connect]);
-   };
-   ```
-
-## Listening for events - `useEvent` & `useChannel`
-
-### Quick Usage
-
-You can pass a short circuit expression to delay connection to an event or channel. If for example you are waiting to recieve an id to use from some network request, `useEvent` and `useChannel` will not connect until it is defined. Below is a contrived example:
+Later on when you would like to connect the socket:
 
 ```ts
-interface MessagesEvent {
-	event: 'messages';
-	data: {
-		messages: { id: number; body: string }[];
-	};
+// Component.tsx
+import { usePhoenix } from 'use-phoenix';
+
+const Component = () => {
+	const { socket, connect } = usePhoenix();
+
+	useEffect(() => {
+		connect('ws://localhost:4000/socket', {
+			params: { token: 'xyz' }
+		});
+	}, [connect]);
+};
+```
+
+## Listening for events - `useEvent` & `useChannel`
+You can pass a short circuit expression to delay connection to an event or channel. If for example you are waiting to recieve an id to use from some network request, `useEvent` and `useChannel` will not connect until it is defined. Below is a contrived example:
+
+```jsx
+interface PingEvent {
+  event: 'ping',
+  data: {
+    body: string;
+  }
 }
-// async request
-const id = fetchRoomId();
 
-// Channel will not connect until id is defined
-const [channel, { push }] = useChannel(id && `chat:${id}`);
+interface PongEvent {
+  event: 'pong';
+  data: {
+    message: string;
+  };
+}
 
-const { data } = useEvent(channel, 'messages');
+interface PingResponse {
+  ok: boolean;
+}
 
-return (
-	<div>
-		<button
-			onClick={() => {
-				push('new_msg', { body: 'hi' });
-			}}
-		>
-			another one
-		</button>
-		{data && data.messages.map((message) => <div key={message.id}>{message.body}</div>)}
-	</div>
-);
+  // Channel will not connect until id is defined
+  const [channel, { push }] = useChannel(id && `chat:${id}`);
+
+  const { data } = useEvent<PongEvent>(channel, 'pong');
+
+  const handleClick = () => {
+    const { ok } = await push<PingEvent, PingResponse>('ping', { body: 'Hello World' })
+  }
+
+  return (
+    <div>
+      <button onClick={handleClick}>
+        ping
+      </button>
+      <p>{data && data.message}</p>
+    </div>
+  );
 ```
 
 # useEvent
