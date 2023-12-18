@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
-import { Channel, ChannelMeta, ChannelOptions, ChannelParams, Push, PushFunction } from '.';
+import type { Channel, ChannelMeta, ChannelOptions, ChannelParams, Push, PushFunction } from './types';
+import { Channel as ChannelClass } from 'phoenix';
+
 import { findChannel } from '../util';
 import { Merge } from '../usePresence';
 
 export function useChannel<TParams extends ChannelParams, TJoinResponse>(
-	topic: string,
+	topic: string | boolean | null | undefined,
 	options?: ChannelOptions<TParams>
 ): [Channel | null, Merge<ChannelMeta<TJoinResponse>, { leave: () => void; push: PushFunction }>] {
 	const { socket } = usePhoenix();
@@ -27,10 +29,11 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 
 	useEffect(() => {
 		if (socket === null) return;
+		if (typeof topic !== 'string') return;
 		if (findChannel(socket, topic)) return;
-		if (typeof topic == 'undefined' || topic === null) return;
 
 		const channel = socket.channel(topic, params);
+
 		channel
 			.join()
 			.receive('ok', (response: TJoinResponse) => {
@@ -93,7 +96,7 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 	 *
 	 */
 	const leave = useCallback(() => {
-		if (channel instanceof Channel) {
+		if (channel instanceof ChannelClass) {
 			channel.leave();
 			set(null);
 		}
