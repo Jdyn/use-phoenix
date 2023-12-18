@@ -38,7 +38,7 @@ const plugins = [
 ].filter(Boolean);
 
 export default {
-	input: 'index.ts',
+	input: 'src/index.ts',
 	output: isDev ? [esm] : [cjs, esm],
 	plugins,
 	external: Object.keys(pkg.peerDependencies)
