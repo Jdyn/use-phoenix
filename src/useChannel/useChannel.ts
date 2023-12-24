@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
 import type { Channel, ChannelMeta, ChannelOptions, ChannelParams, Push, PushFunction } from './types';
@@ -30,7 +30,16 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 	useEffect(() => {
 		if (socket === null) return;
 		if (typeof topic !== 'string') return;
-		if (findChannel(socket, topic)) return;
+
+		const existingChannel = findChannel(socket, topic);
+
+		if (existingChannel) {
+			/* If we find an existing channel with this topic,
+					we need to reconect our internal reference so we can
+					properly use our functions like `push` and `leave`. */
+			set(existingChannel);
+			return;
+		}
 
 		const channel = socket.channel(topic, params);
 
@@ -95,12 +104,12 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 	 * useChannel does not automatically leave the channel when the component unmounts by default.
 	 *
 	 */
-	const leave = useCallback(() => {
-		if (channel instanceof ChannelClass) {
-			channel.leave();
+	const leave = () => {
+		if (channelRef?.current instanceof ChannelClass) {
+			channelRef?.current.leave();
 			set(null);
 		}
-	}, [channel]);
+	}
 
 	return [channelRef.current, { leave, push, ...meta }];
 }
@@ -108,7 +117,7 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
 	new Promise((resolve, reject) => {
 		if (!push) {
-			return reject('no push');
+			return reject('Cannot use `push` while the reference to the channel is severed. Make sure the topic being supplied at the moment of this push is valid.');
 		}
 
 		push.receive('ok', resolve).receive('error', reject);

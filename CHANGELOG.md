@@ -1,3 +1,13 @@
+# 0.0.1-alpha.6
+
+2023-12-23
+
+### Breaking changes
+None
+
+### Additional changes
+* Fixed a bug where if you successfully connected to a channel, but then later on the topic supplied to `useChannel` had changed to `null` and then back to the valid topic, the `useChannel` hook functions like `push` would no longer be holding a valid reference to the channel. Now, the hook will successfully update the reference and the functions will work as if the channel topic never changed.
+* Use the internel channel `ref` when using `useChannel`'s `leave`
 # 0.0.1-alpha.5
 
 2023-12-17
