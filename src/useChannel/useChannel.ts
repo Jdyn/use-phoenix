@@ -117,7 +117,7 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
 	new Promise((resolve, reject) => {
 		if (!push) {
-			return reject('Cannot use `push` while there the reference to the channel is severed. Make sure the topic being supplied at the moment of this push is valid.');
+			return reject('Cannot use `push` while the reference to the channel is severed. Make sure the topic being supplied at the moment of this push is valid.');
 		}
 
 		push.receive('ok', resolve).receive('error', reject);
