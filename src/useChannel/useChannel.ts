@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
 import type { Channel, ChannelMeta, ChannelOptions, ChannelParams, Push, PushFunction } from './types';
@@ -96,20 +96,20 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 		set(channel);
 	}, [socket, topic, params, setMeta]);
 
-	const push: PushFunction = (event, payload) =>
-		pushPromise(channelRef.current?.push(event, payload ?? {}));
+	const push: PushFunction = useCallback((event, payload) =>
+		pushPromise(channelRef.current?.push(event, payload ?? {})), [channelRef]);
 
 	/*
 	 * Allows you to leave the channel.
 	 * useChannel does not automatically leave the channel when the component unmounts by default.
 	 *
 	 */
-	const leave = () => {
+	const leave = useCallback(() => {
 		if (channelRef?.current instanceof ChannelClass) {
 			channelRef?.current.leave();
 			set(null);
 		}
-	}
+	}, [channelRef]);
 
 	return [channelRef.current, { leave, push, ...meta }];
 }
