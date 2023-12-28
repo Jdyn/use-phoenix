@@ -1,3 +1,13 @@
+# 0.0.1-alpha.7
+
+2023-12-27
+
+### Breaking changes
+None
+
+### Additional changes
+* Fix buggy behavior where the reference to `useChannel` functions would be changing on every render. This would cause your useEffects to run even if there should be no change.
+
 # 0.0.1-alpha.6
 
 2023-12-23
