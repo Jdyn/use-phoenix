@@ -1,3 +1,13 @@
+# 0.0.1-alpha.8
+
+2023-1-05
+
+### Breaking changes
+None
+
+### Additional changes
+* Fix a bug where a component re-render would cause `useEvent` to stop listening and responding to the event correctly if `leave` was recently called.
+
 # 0.0.1-alpha.7
 
 2023-12-27

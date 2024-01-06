@@ -37,11 +37,14 @@ export function useEvent<Event extends EventAction>(
 ): { data: Event['data'] | null } {
 	const { socket } = usePhoenix();
 	const handler = useLatest(listener);
-	const [channel, set] = useState<Channel | null>(null);
+	const [channel, set] = useState<Channel | undefined>(findChannel(socket, event));
+
+	const channelRef = useLatest(channel);
+
 	const [data, setData] = useState<Event['data'] | null>(null);
 
 	const upsert = useCallback(
-		(topic: string): Channel | null => {
+		(topic: string): Channel | undefined => {
 			if (socket) {
 				let channel = findChannel(socket, topic);
 				if (channel) return channel;
@@ -51,7 +54,7 @@ export function useEvent<Event extends EventAction>(
 				return channel;
 			}
 
-			return null;
+			return undefined;
 		},
 		[socket]
 	);
@@ -74,17 +77,19 @@ export function useEvent<Event extends EventAction>(
 	}, [identifier, upsert]);
 
 	useEffect(() => {
-		if (channel === null) return;
+		if (!channelRef.current) return;
 
-		const ref = channel.on(event, (message) => {
+		const ref = channelRef.current.on(event, (message) => {
 			setData(message);
-			if (typeof handler.current !== 'function') return;
-			handler.current(message);
+
+			if (typeof handler.current === 'function') {
+				handler.current(message);
+			}
 		});
 
 		return () => {
-			channel.off(event, ref);
-			set(null);
+			channelRef.current?.off(event, ref);
+			set(undefined);
 		};
 	}, [channel, event, handler]);
 
