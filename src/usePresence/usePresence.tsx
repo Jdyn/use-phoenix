@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Presence } from 'phoenix';
 import { usePhoenix } from '../usePhoenix';
-import type { Merge, Metas, PresenceState } from './types';
+import type { Metas, PresenceState } from './types';
+import { Merge } from '../util';
 
 export function usePresence<PayloadType, MetasType = Metas>(
 	topic: string | undefined
@@ -49,7 +50,7 @@ export function usePresence<PayloadType, MetasType = Metas>(
 						}
 
 						return { id: key, ..._presence[key], metas };
-				  })
+					})
 				: [],
 		[_presence]
 	) as Merge<PayloadType, { id: string; metas: MetasType }>[];

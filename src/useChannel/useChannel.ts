@@ -1,59 +1,90 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
-import type { Channel, ChannelMeta, ChannelOptions, ChannelParams, Push, PushFunction } from './types';
+import {
+	Channel,
+	ChannelMeta,
+	ChannelOptions,
+	ChannelParams,
+	ChannelState,
+	Push,
+	PushFunction
+} from './types';
 import { Channel as ChannelClass } from 'phoenix';
 
 import { findChannel } from '../util';
-import { Merge } from '../usePresence';
+import cache from '../cache';
 
-export function useChannel<TParams extends ChannelParams, TJoinResponse>(
+/**
+ * A hook to open a new Phoenix channel, or attach to an existing one
+ * that has been opened by another component.
+ *
+ * Note If the channel is already open, the hook will return the existing
+ * channel and state.
+ *
+ * This behavior differs from Phoenix.js where any time you create
+ * a new channel, it will close the existing one. This hook will not close
+ * the existing channel and instead attaches to it.
+ *
+ * This is useful for when you have multiple components that need to interact
+ * with the same channel.
+ *
+ * @example
+ * ```ts
+ *	const [channel, { push, leave, data }] = useChannel('room:1');
+ *	useEvent(channel, 'new_message', handleMessage);
+ * ```
+ *
+ * @param topic - the topic to connect to.
+ * @param params - The params to send when joining the channel.
+ */
+export function useChannel<TParams extends ChannelParams, JoinResposne>(
 	topic: string | boolean | null | undefined,
-	options?: ChannelOptions<TParams>
-): [Channel | null, Merge<ChannelMeta<TJoinResponse>, { leave: () => void; push: PushFunction }>] {
-	const { socket } = usePhoenix();
+	params?: ChannelOptions<TParams>
+): [Channel | undefined, ChannelState<JoinResposne>] {
+	const { socket, isConnected } = usePhoenix();
 
-	const [channel, set] = useState<Channel | null>(null);
-	const [meta, setMeta] = useState<ChannelMeta<TJoinResponse>>({
-		data: null,
-		status: 'joining',
-		isSuccess: false,
-		isLoading: true,
-		isError: false,
-		error: null
-	});
+	const [channel, set] = useState<Channel | undefined>(findChannel(socket, topic as string));
+	const [meta, setMeta] = useState<ChannelMeta<JoinResposne>>(
+		cache.get<JoinResposne>(topic as string)
+	);
 
-	const channelRef = useLatest(channel);
-
-	const { params } = options || {};
+	const paramsRef = useLatest(params);
 
 	useEffect(() => {
-		if (socket === null) return;
+		if (!isConnected) return;
 		if (typeof topic !== 'string') return;
+		if (!socket) return;
+
+		const params = paramsRef.current?.params ?? {};
 
 		const existingChannel = findChannel(socket, topic);
 
 		if (existingChannel) {
 			/* If we find an existing channel with this topic,
-					we need to reconect our internal reference so we can
-					properly use our functions like `push` and `leave`. */
+					we need to reconect our internal reference. */
 			set(existingChannel);
+			setMeta(cache.get<JoinResposne>(topic));
+
 			return;
 		}
 
-		const channel = socket.channel(topic, params);
+		const _channel = socket.channel(topic, params);
 
-		channel
+		_channel
 			.join()
-			.receive('ok', (response: TJoinResponse) => {
-				setMeta({
+			.receive('ok', (response: JoinResposne) => {
+				const meta: ChannelMeta<JoinResposne> = {
 					isSuccess: true,
 					isLoading: false,
 					isError: false,
 					error: null,
 					data: response,
 					status: 'success'
-				});
+				};
+
+				setMeta(meta);
+				cache.insert(topic, meta);
 			})
 			.receive('error', (error) => {
 				setMeta({
@@ -76,7 +107,18 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 				});
 			});
 
-		channel.on('phx_error', () => {
+		_channel.onError((error) => {
+			setMeta({
+				isSuccess: false,
+				isLoading: false,
+				isError: true,
+				error,
+				data: null,
+				status: 'error'
+			});
+		});
+
+		_channel.on('phx_error', () => {
 			setMeta({
 				isSuccess: false,
 				isLoading: false,
@@ -90,14 +132,19 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 			 * If the channel is in an error state, we want to leave the channel.
 			 * So we do not attempt to rejoin infinitely.
 			 */
-			channel.leave();
+			if (channel) channel.leave();
 		});
 
-		set(channel);
-	}, [socket, topic, params, setMeta]);
+		set(_channel);
+	}, [isConnected, topic]);
 
-	const push: PushFunction = useCallback((event, payload) =>
-		pushPromise(channelRef.current?.push(event, payload ?? {})), [channelRef]);
+	const push: PushFunction = useCallback(
+		(event, payload) => {
+			if (channel === undefined) return Promise.reject('Channel is not connected.');
+			return pushPromise(channel.push(event, payload ?? {}));
+		},
+		[channel]
+	);
 
 	/*
 	 * Allows you to leave the channel.
@@ -105,20 +152,21 @@ export function useChannel<TParams extends ChannelParams, TJoinResponse>(
 	 *
 	 */
 	const leave = useCallback(() => {
-		if (channelRef?.current instanceof ChannelClass) {
-			channelRef?.current.leave();
-			set(null);
+		if (channel instanceof ChannelClass) {
+			channel.leave();
+			set(undefined);
 		}
-	}, [channelRef]);
+	}, [channel]);
 
-	return [channelRef.current, { leave, push, ...meta }];
+	const channelState: ChannelState<JoinResposne> = useMemo(
+		() => ({ ...meta, push, leave }),
+		[meta, push, leave]
+	);
+
+	return [channel, channelState];
 }
 
-const pushPromise = <Response>(push: Push | undefined): Promise<Response> =>
+const pushPromise = <Response>(push: Push): Promise<Response> =>
 	new Promise((resolve, reject) => {
-		if (!push) {
-			return reject('Cannot use `push` while the reference to the channel is severed. Make sure the topic being supplied at the moment of this push is valid.');
-		}
-
 		push.receive('ok', resolve).receive('error', reject);
 	});

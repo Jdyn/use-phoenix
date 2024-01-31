@@ -17,6 +17,8 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 	const { children, onOpen, onClose, onError } = props;
 
 	const [socket, set] = useState<PhoenixSocket | null>(null);
+	const [isConnected, setConnected] = useState(false);
+
 	const socketRef = useLatest(socket);
 
 	const defaultListeners = useCallback(
@@ -24,6 +26,14 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 			if (onOpen) socket.onOpen(onOpen);
 			if (onClose) socket.onClose(onClose);
 			if (onError) socket.onError(onError);
+
+			socket.onOpen(() => {
+				setConnected(true);
+			});
+
+			socket.onClose(() => {
+				setConnected(false);
+			});
 		},
 		[onClose, onError, onOpen]
 	);
@@ -33,7 +43,6 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 			const socket = new Socket(url, options ?? {}) as PhoenixSocket;
 			socket.connect();
 			set(socket);
-
 			defaultListeners(socket);
 
 			return socket;
@@ -52,7 +61,7 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 	}, [url, options, connect]);
 
 	return (
-		<PhoenixContext.Provider value={{ socket: socketRef.current, connect }}>
+		<PhoenixContext.Provider value={{ socket: socketRef.current, connect, isConnected }}>
 			{children}
 		</PhoenixContext.Provider>
 	);

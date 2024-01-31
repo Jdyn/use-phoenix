@@ -1,5 +1,9 @@
+import { Merge } from '../util';
+
 export type { Push } from 'phoenix';
 export { Channel } from 'phoenix';
+
+export type ChannelState<JoinResposne> = Merge<ChannelMeta<JoinResposne>, { leave: () => void; push: PushFunction }>;
 
 export type PushEvent = {
 	event: string;
@@ -14,8 +18,8 @@ export type ChannelStatus =
 	| 'connection timeout'
 	| 'closed';
 
-export type ChannelMeta<TJoinResponse> = {
-	data: TJoinResponse | null;
+export type ChannelMeta<JoinResposne> = {
+	data: JoinResposne | null;
 	status: ChannelStatus;
 	isSuccess: boolean;
 	isLoading: boolean;
