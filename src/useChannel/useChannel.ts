@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
 import {
@@ -136,7 +136,7 @@ export function useChannel<TParams extends ChannelParams, JoinResposne>(
 		});
 
 		set(_channel);
-	}, [isConnected, topic]);
+	}, [isConnected, topic, setMeta, set]);
 
 	const push: PushFunction = useCallback(
 		(event, payload) => {
@@ -158,12 +158,7 @@ export function useChannel<TParams extends ChannelParams, JoinResposne>(
 		}
 	}, [channel]);
 
-	const channelState: ChannelState<JoinResposne> = useMemo(
-		() => ({ ...meta, push, leave }),
-		[meta, push, leave]
-	);
-
-	return [channel, channelState];
+	return [channel, {...meta, push, leave}];
 }
 
 const pushPromise = <Response>(push: Push): Promise<Response> =>
