@@ -15,7 +15,7 @@ export default {
 	insert: (topic: string, channelMeta: ChannelMeta<any>) => {
 		cache.set(topic, channelMeta);
 	},
-	get: <TJoinResponse>(topic: string | undefined | boolean | null): ChannelMeta<TJoinResponse> => {
+	get: <JoinPayload>(topic: string | undefined | boolean | null): ChannelMeta<JoinPayload> => {
 		if (typeof topic !== 'string') return defaultMeta;
 
 		const result = cache.get(topic);

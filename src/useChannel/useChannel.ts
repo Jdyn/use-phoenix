@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
-import {
+import type {
 	Channel,
 	ChannelMeta,
 	ChannelOptions,
 	ChannelParams,
 	ChannelState,
-	Push,
 	PushFunction
 } from './types';
 import { Channel as ChannelClass } from 'phoenix';
 
-import { findChannel } from '../util';
+import { createMeta, findChannel, pushPromise } from '../util';
 import cache from '../cache';
 
 /**
@@ -38,15 +37,15 @@ import cache from '../cache';
  * @param topic - the topic to connect to.
  * @param params - The params to send when joining the channel.
  */
-export function useChannel<TParams extends ChannelParams, JoinResposne>(
+export function useChannel<Params extends ChannelParams, JoinPayload>(
 	topic: string | boolean | null | undefined,
-	params?: ChannelOptions<TParams>
-): [Channel | undefined, ChannelState<JoinResposne>] {
+	params?: ChannelOptions<Params>
+): [Channel | undefined, ChannelState<JoinPayload>] {
 	const { socket, isConnected } = usePhoenix();
 
 	const [channel, set] = useState<Channel | undefined>(findChannel(socket, topic as string));
-	const [meta, setMeta] = useState<ChannelMeta<JoinResposne>>(
-		cache.get<JoinResposne>(topic as string)
+	const [meta, setMeta] = useState<ChannelMeta<JoinPayload>>(
+		cache.get<JoinPayload>(topic as string)
 	);
 
 	const paramsRef = useLatest(params);
@@ -64,7 +63,7 @@ export function useChannel<TParams extends ChannelParams, JoinResposne>(
 			/* If we find an existing channel with this topic,
 					we need to reconect our internal reference. */
 			set(existingChannel);
-			setMeta(cache.get<JoinResposne>(topic));
+			setMeta(cache.get<JoinPayload>(topic));
 
 			return;
 		}
@@ -73,66 +72,31 @@ export function useChannel<TParams extends ChannelParams, JoinResposne>(
 
 		_channel
 			.join()
-			.receive('ok', (response: JoinResposne) => {
-				const meta: ChannelMeta<JoinResposne> = {
-					isSuccess: true,
-					isLoading: false,
-					isError: false,
-					error: null,
-					data: response,
-					status: 'success'
-				};
-
-				setMeta(meta);
+			.receive('ok', (response: JoinPayload) => {
+				const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
 				cache.insert(topic, meta);
+				setMeta(meta);
 			})
 			.receive('error', (error) => {
-				setMeta({
-					isSuccess: false,
-					isLoading: false,
-					isError: true,
-					error,
-					data: null,
-					status: 'error'
-				});
+				setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
 			})
 			.receive('timeout', () => {
-				setMeta({
-					isSuccess: false,
-					isLoading: false,
-					isError: true,
-					error: null,
-					status: 'connection timeout',
-					data: null
-				});
+				setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'connection timeout'));
 			});
 
 		_channel.onError((error) => {
-			setMeta({
-				isSuccess: false,
-				isLoading: false,
-				isError: true,
-				error,
-				data: null,
-				status: 'error'
-			});
+			setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
 		});
 
 		_channel.on('phx_error', () => {
-			setMeta({
-				isSuccess: false,
-				isLoading: false,
-				isError: true,
-				error: null,
-				status: 'internal server error',
-				data: null
-			});
-
+			setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'internal server error'));
 			/**
 			 * If the channel is in an error state, we want to leave the channel.
 			 * So we do not attempt to rejoin infinitely.
+			 *
+			 * Disabling this for now, could make it opt-in.
 			 */
-			if (channel) channel.leave();
+			// if (channel) channel.leave();
 		});
 
 		set(_channel);
@@ -158,10 +122,5 @@ export function useChannel<TParams extends ChannelParams, JoinResposne>(
 		}
 	}, [channel]);
 
-	return [channel, {...meta, push, leave}];
+	return [channel, { ...meta, push, leave }];
 }
-
-const pushPromise = <Response>(push: Push): Promise<Response> =>
-	new Promise((resolve, reject) => {
-		push.receive('ok', resolve).receive('error', reject);
-	});

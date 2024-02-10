@@ -2,7 +2,7 @@
  * {@type require('prettier').Config}
  */
 module.exports = {
-	useTabs: true,
+	useTabs: false,
 	printWidth: 100,
 	singleQuote: true,
 	trailingComma: 'none',
