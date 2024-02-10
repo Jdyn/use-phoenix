@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
 import type {
-	Channel,
-	ChannelMeta,
-	ChannelOptions,
-	ChannelParams,
-	ChannelState,
-	PushFunction
+  Channel,
+  ChannelMeta,
+  ChannelOptions,
+  ChannelParams,
+  ChannelState,
+  PushFunction
 } from './types';
 import { Channel as ChannelClass } from 'phoenix';
 
@@ -38,89 +38,100 @@ import cache from '../cache';
  * @param params - The params to send when joining the channel.
  */
 export function useChannel<Params extends ChannelParams, JoinPayload>(
-	topic: string | boolean | null | undefined,
-	params?: ChannelOptions<Params>
+  topic: string | boolean | null | undefined,
+  params?: ChannelOptions<Params>
 ): [Channel | undefined, ChannelState<JoinPayload>] {
-	const { socket, isConnected } = usePhoenix();
+  const { socket, isConnected } = usePhoenix();
 
-	const [channel, set] = useState<Channel | undefined>(findChannel(socket, topic as string));
-	const [meta, setMeta] = useState<ChannelMeta<JoinPayload>>(
-		cache.get<JoinPayload>(topic as string)
-	);
+  const [channel, set] = useState<Channel | undefined>(findChannel(socket, topic as string));
+  const [meta, setMeta] = useState<ChannelMeta<JoinPayload>>(
+    cache.get<JoinPayload>(topic as string)
+  );
 
-	const paramsRef = useLatest(params);
+  const paramsRef = useLatest(params);
 
-	useEffect(() => {
-		if (!isConnected) return;
-		if (typeof topic !== 'string') return;
-		if (!socket) return;
+  useEffect(() => {
+    if (!isConnected) return;
+    if (typeof topic !== 'string') return;
+    if (!socket) return;
 
-		const params = paramsRef.current?.params ?? {};
+    const params = paramsRef.current?.params ?? {};
 
-		const existingChannel = findChannel(socket, topic);
+    const existingChannel = findChannel(socket, topic);
 
-		if (existingChannel) {
-			/* If we find an existing channel with this topic,
+    if (existingChannel) {
+      /* If we find an existing channel with this topic,
 					we need to reconect our internal reference. */
-			set(existingChannel);
-			setMeta(cache.get<JoinPayload>(topic));
+      set(existingChannel);
 
-			return;
-		}
+      if (existingChannel.state === 'joining') {
+        existingChannel.on('phx_reply', () => {
+          /* It is possible that we found an existing channel
+						but it has not yet fully joined. In this case, we want to
+						listen in on phx_reply, to update our meta from the
+						useChannel that is actually doing the join()  */
+          setMeta(cache.get<JoinPayload>(topic));
+        });
+      } else {
+        setMeta(cache.get<JoinPayload>(topic));
+      }
 
-		const _channel = socket.channel(topic, params);
+      return;
+    }
 
-		_channel
-			.join()
-			.receive('ok', (response: JoinPayload) => {
-				const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
-				cache.insert(topic, meta);
-				setMeta(meta);
-			})
-			.receive('error', (error) => {
-				setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
-			})
-			.receive('timeout', () => {
-				setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'connection timeout'));
-			});
+    const _channel = socket.channel(topic, params);
 
-		_channel.onError((error) => {
-			setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
-		});
+    _channel
+      .join()
+      .receive('ok', (response: JoinPayload) => {
+        const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
+        cache.insert(topic, meta);
+        setMeta(meta);
+      })
+      .receive('error', (error) => {
+        setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
+      })
+      .receive('timeout', () => {
+        setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'connection timeout'));
+      });
 
-		_channel.on('phx_error', () => {
-			setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'internal server error'));
-			/**
-			 * If the channel is in an error state, we want to leave the channel.
-			 * So we do not attempt to rejoin infinitely.
-			 *
-			 * Disabling this for now, could make it opt-in.
-			 */
-			// if (channel) channel.leave();
-		});
+    _channel.onError((error) => {
+      setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
+    });
 
-		set(_channel);
-	}, [isConnected, topic, setMeta, set]);
+    _channel.on('phx_error', () => {
+      setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'internal server error'));
+      /**
+       * If the channel is in an error state, we want to leave the channel.
+       * So we do not attempt to rejoin infinitely.
+       *
+       * Disabling this for now, could make it opt-in.
+       */
+      // if (channel) channel.leave();
+    });
 
-	const push: PushFunction = useCallback(
-		(event, payload) => {
-			if (channel === undefined) return Promise.reject('Channel is not connected.');
-			return pushPromise(channel.push(event, payload ?? {}));
-		},
-		[channel]
-	);
+    set(_channel);
+  }, [isConnected, topic, setMeta, set]);
 
-	/*
-	 * Allows you to leave the channel.
-	 * useChannel does not automatically leave the channel when the component unmounts by default.
-	 *
-	 */
-	const leave = useCallback(() => {
-		if (channel instanceof ChannelClass) {
-			channel.leave();
-			set(undefined);
-		}
-	}, [channel]);
+  const push: PushFunction = useCallback(
+    (event, payload) => {
+      if (channel === undefined) return Promise.reject('Channel is not connected.');
+      return pushPromise(channel.push(event, payload ?? {}));
+    },
+    [channel]
+  );
 
-	return [channel, { ...meta, push, leave }];
+  /*
+   * Allows you to leave the channel.
+   * useChannel does not automatically leave the channel when the component unmounts by default.
+   *
+   */
+  const leave = useCallback(() => {
+    if (channel instanceof ChannelClass) {
+      channel.leave();
+      set(undefined);
+    }
+  }, [channel]);
+
+  return [channel, { ...meta, push, leave }];
 }
