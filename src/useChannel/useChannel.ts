@@ -62,7 +62,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
 
     if (existingChannel) {
       /* If we find an existing channel with this topic,
-					we need to reconect our internal reference. */
+        we reconect our internal reference. */
       set(existingChannel);
       channelRef.current = existingChannel;
 
@@ -116,15 +116,33 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     channelRef.current = _channel;
   }, [isConnected, topic, setMeta, set]);
 
+  /**
+   * Pushes an event to the channel.
+   *
+   * @param event - The event to push.
+   * @param payload - The payload to send with the event.
+   * @returns Promise
+   */
   const push: PushFunction = useCallback((event, payload) => {
     if (channelRef.current === null) return Promise.reject('Channel is not connected.');
     return pushPromise(channelRef.current.push(event, payload ?? {}));
   }, []);
 
-  /*
+  /**
    * Allows you to leave the channel.
-   * useChannel does not automatically leave the channel when the component unmounts by default.
    *
+   * useChannel does not automatically leave the channel when the component unmounts by default. If
+   * you want to leave the channel when the component unmounts, you can use a useEffect:
+   *
+   * @example
+   * ```ts
+   *  useEffect(() => {
+   *    return () => {
+   *      leave();
+   *    };
+   *  }, []);
+   * ```
+   * @returns void
    */
   const leave = useCallback(() => {
     if (channelRef.current instanceof ChannelClass) {
