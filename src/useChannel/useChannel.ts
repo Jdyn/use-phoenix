@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useLatest from '../useLatest';
 import { usePhoenix } from '../usePhoenix';
 import type {
@@ -44,6 +44,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
   const { socket, isConnected } = usePhoenix();
 
   const [channel, set] = useState<Channel | undefined>(findChannel(socket, topic as string));
+  const channelRef = useRef<Channel | null>(null);
   const [meta, setMeta] = useState<ChannelMeta<JoinPayload>>(
     cache.get<JoinPayload>(topic as string)
   );
@@ -63,6 +64,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
       /* If we find an existing channel with this topic,
 					we need to reconect our internal reference. */
       set(existingChannel);
+      channelRef.current = existingChannel;
 
       if (existingChannel.state === 'joining') {
         existingChannel.on('phx_reply', () => {
@@ -111,15 +113,13 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     });
 
     set(_channel);
+    channelRef.current = _channel;
   }, [isConnected, topic, setMeta, set]);
 
-  const push: PushFunction = useCallback(
-    (event, payload) => {
-      if (channel === undefined) return Promise.reject('Channel is not connected.');
-      return pushPromise(channel.push(event, payload ?? {}));
-    },
-    [channel]
-  );
+  const push: PushFunction = useCallback((event, payload) => {
+    if (channelRef.current === null) return Promise.reject('Channel is not connected.');
+    return pushPromise(channelRef.current.push(event, payload ?? {}));
+  }, []);
 
   /*
    * Allows you to leave the channel.
@@ -127,11 +127,11 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
    *
    */
   const leave = useCallback(() => {
-    if (channel instanceof ChannelClass) {
-      channel.leave();
+    if (channelRef.current instanceof ChannelClass) {
+      channelRef.current.leave();
       set(undefined);
     }
-  }, [channel]);
+  }, []);
 
   return [channel, { ...meta, push, leave }];
 }
