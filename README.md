@@ -9,7 +9,7 @@ Wrap the intended part of your application with a `PhoenixProvider`.
 import { PhoenixProvider } from 'use-phoenix';
 
 const Application = () => {
-	return <PhoenixProvider>...</PhoenixProvider>;
+  return <PhoenixProvider>...</PhoenixProvider>;
 };
 ```
 
@@ -17,14 +17,14 @@ Passing a `url` and params to your `PhoenixProvder` will connect to your socket 
 
 ```tsx
 return (
-	<PhoenixProvider
-		url="ws://localhost:4000/socket"
-		options={{
-			params: { token: 'xyz' }
-		}}
-	>
-		...
-	</PhoenixProvider>
+  <PhoenixProvider
+    url="ws://localhost:4000/socket"
+    options={{
+      params: { token: 'xyz' }
+    }}
+  >
+    ...
+  </PhoenixProvider>
 );
 ```
 
@@ -44,13 +44,13 @@ Later on when you would like to connect the socket:
 import { usePhoenix } from 'use-phoenix';
 
 const Component = () => {
-	const { socket, connect } = usePhoenix();
+  const { socket, connect } = usePhoenix();
 
-	useEffect(() => {
-		connect('ws://localhost:4000/socket', {
-			params: { token: 'xyz' }
-		});
-	}, [connect]);
+  useEffect(() => {
+    connect('ws://localhost:4000/socket', {
+      params: { token: 'xyz' }
+    });
+  }, [connect]);
 };
 ```
 
@@ -135,7 +135,7 @@ Optionally, if you would rather capture the response in a callback you can (or b
 
 ```ts
 const { data } = useEvent<JoinEvent>(channel, 'join', (data) => {
-	console.log(response);
+  console.log(response);
 });
 ```
 
@@ -215,8 +215,8 @@ users[0].metas.lastSeen;
   const [channel, { leave }] = useChannel('chat:lobby');
 
   useEffect(() => {
-  	return () => {
-  		leave();
-  	};
+    return () => {
+      leave();
+    };
   }, [leave]);
   ```
