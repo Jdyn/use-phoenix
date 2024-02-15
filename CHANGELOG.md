@@ -14,6 +14,15 @@ I have been using this version enough in a few complex projects and has been per
 - Calling `useChannel` on the same channel topic across any number of components should just work, and keep all components connected and listening. Additionally, the state object should be consistent across all `useChannel` topics across components.
 
 - expose an `isConnected` boolean inside `usePhoenix` to know when the socket has officially connected. This is useful for example, in cases when you want to request data with push right when the socket connects, and you dont want to specify the socket itself as a dependency to the useEffect since it would trigger the useEffect many times.
+# 0.0.1-alpha.8
+
+2023-1-05
+
+### Breaking changes
+None
+
+### Additional changes
+* Fix a bug where a component re-render would cause `useEvent` to stop listening and responding to the event correctly if `leave` was recently called.
 
 # 0.0.1-alpha.7
 
