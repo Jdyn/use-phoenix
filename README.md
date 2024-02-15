@@ -1,32 +1,37 @@
 # use-phoenix
+
 ## Connecting to your Phoenix Socket
-Wrap the intended part of your application with `PhoenixProvider`.
+
+Wrap the intended part of your application with a `PhoenixProvider`.
 
 ```tsx
 // App.tsx
 import { PhoenixProvider } from 'use-phoenix';
 
 const Application = () => {
-	return <PhoenixProvider>...</PhoenixProvider>;
+  return <PhoenixProvider>...</PhoenixProvider>;
 };
 ```
 
 Passing a `url` and params to your `PhoenixProvder` will connect to your socket instantly **on mount**:
+
 ```tsx
 return (
-<PhoenixProvider
-	url="ws://localhost:4000/socket"
-	options={{
-		params: { token: 'xyz' }
-	}}
->
-	...
-</PhoenixProvider>
+  <PhoenixProvider
+    url="ws://localhost:4000/socket"
+    options={{
+      params: { token: 'xyz' }
+    }}
+  >
+    ...
+  </PhoenixProvider>
 );
 ```
-Using the `usePhoenix` hook to connect lazily using `connect`:
+
+You could instead use the `usePhoenix` hook to connect lazily using `connect`:
 
 To use this option **do not pass a `url`** into `PhoenixProvider`:
+
 ```tsx
 // App.tsx
 return <PhoenixProvider>...</PhoenixProvider>;
@@ -39,17 +44,20 @@ Later on when you would like to connect the socket:
 import { usePhoenix } from 'use-phoenix';
 
 const Component = () => {
-	const { socket, connect } = usePhoenix();
+  const { socket, connect } = usePhoenix();
 
-	useEffect(() => {
-		connect('ws://localhost:4000/socket', {
-			params: { token: 'xyz' }
-		});
-	}, [connect]);
+  useEffect(() => {
+    connect('ws://localhost:4000/socket', {
+      params: { token: 'xyz' }
+    });
+  }, [connect]);
 };
 ```
 
-## Listening for events - `useEvent` & `useChannel`
+`usePhoenix` also provides `isConnected` which becomes `true` when the socket has successfully connected.
+
+## Quick Start - `useEvent` & `useChannel`
+
 You can pass a short circuit expression to delay connection to an event or channel. If for example you are waiting to recieve an id to use from some network request, `useEvent` and `useChannel` will not connect until it is defined. Below is a contrived example:
 
 ```jsx
@@ -67,16 +75,24 @@ interface PongEvent {
   };
 }
 
+interface JoinPayload {
+  secret: string;
+}
+
 interface PingResponse {
   ok: boolean;
 }
 
   // Channel will not connect until id is defined
-  const [channel, { push }] = useChannel(id && `chat:${id}`);
+  const [channel, { push, data }] = useChannel<JoinPayload>(id && `chat:${id}`);
+  //                      ^^^^
+  //        data is typed according to `JoinPayload`
 
-  const { data } = useEvent<PongEvent>(channel, 'pong');
+  // Events will not be listened to until data.secret is defined
+  const { data } = useEvent<PongEvent>(channel, data?.secret && `pong:${data.secret}`);
 
   const handleClick = () => {
+    // ok is typed according to PingResponse
     const { ok } = await push<PingEvent, PingResponse>('ping', { body: 'Hello World' })
   }
 
@@ -92,7 +108,7 @@ interface PingResponse {
 
 # useEvent
 
-`useEvent` is a hook that allows you to succinctly listen in on a channel and receive responses.
+`useEvent` is a hook that allows you to succinctly listen in on channel events.
 
 ### Example Usage
 
@@ -111,18 +127,15 @@ const [channel, { isSuccess, isError, ...rest }] = useChannel('chat:lobby')
 // pass in a channel directly
 const { data } = useEvent<JoinEvent>(channel, 'join')
 
-// OR pass in a channel topic and let the hook create the channel internally
-const { data } = useEvent<JoinEvent>('chat:lobby', 'join');
-
 // typed
 console.log(data.members)
 ```
 
-Optionally, if you would rather capture the response in a callback you can:
+Optionally, if you would rather capture the response in a callback you can (or both):
 
-```tsx
-useEvent<JoinEvent>('chat:lobby', 'join', (response) => {
-	console.log(response);
+```ts
+const { data } = useEvent<JoinEvent>(channel, 'join', (data) => {
+  console.log(response);
 });
 ```
 
@@ -131,7 +144,7 @@ useEvent<JoinEvent>('chat:lobby', 'join', (response) => {
 `useChannel` gives you important functions and information about the state of the channel. The following properties are available for `useChannel`
 
 ```ts
-data: TJoinResponse | null; // the join response from the server
+data: JoinPayload | null; // the join response from the server
 status: ChannelStatus;
 isSuccess: boolean;
 isLoading: boolean;
@@ -196,16 +209,14 @@ users[0].metas.lastSeen;
 
 ## Notes
 
-- If a channel recieves a `phx_error` event, meaning there was some internal server error, `useChannel` will leave the associated channel to avoid infinite error looping.
-
-- Currently, `useChannel` does not automatically `leave` when the hook unmounts so the socket will continue to listen in on the channel. It is best to handle leaving the channel explicitly using `leave`:
+- `useChannel` does not automatically `leave` the channel when the hook unmounts. That is, the socket will continue to listen in on the channel. It is best to handle leaving the channel explicitly using `leave` if you would like to leave the channel on component unmounts:
 
   ```ts
   const [channel, { leave }] = useChannel('chat:lobby');
 
   useEffect(() => {
-  	return () => {
-  		leave();
-  	};
+    return () => {
+      leave();
+    };
   }, [leave]);
   ```

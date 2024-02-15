@@ -1,41 +1,34 @@
 {
-	"parser": "@typescript-eslint/parser",
-	"plugins": [
-		"@typescript-eslint",
-		"react-hooks",
-		"simple-import-sort"
-	],
-	"extends": [
-		"eslint:recommended",
-		"plugin:react/recommended",
-		"plugin:react-hooks/recommended",
-		"plugin:@typescript-eslint/recommended",
-		"prettier"
-	],
-	"parserOptions": {
-		"ecmaVersion": 2020,
-		"sourceType": "module",
-		"ecmaFeatures": {
-			"jsx": true
-		}
-	},
-	"rules": {},
-	"overrides": [
-		{
-			"files": [
-				"*.test.ts",
-				"*.test.tsx"
-			],
-			"rules": {
-				// Allow testing runtime errors to suppress TS errors
-				"@typescript-eslint/ban-ts-comment": "off"
-			}
-		}
-	],
-	"settings": {
-		"react": {
-			"pragma": "React",
-			"version": "detect"
-		}
-	}
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "react-hooks", "simple-import-sort"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["*.test.ts", "*.test.tsx"],
+      "rules": {
+        // Allow testing runtime errors to suppress TS errors
+        "@typescript-eslint/ban-ts-comment": "off"
+      }
+    }
+  ],
+  "settings": {
+    "react": {
+      "pragma": "React",
+      "version": "detect"
+    }
+  }
 }

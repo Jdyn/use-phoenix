@@ -1,97 +1,56 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Channel } from 'phoenix';
 import useLatest from '../useLatest';
-import { usePhoenix } from '../usePhoenix';
-import { findChannel } from '../util';
 import { EventAction } from './types';
 
 /**
- * Hook to subscribe to a Phoenix channel event.
+ * A hook to subscribe to a Phoenix Channel event.
  *
- * @example - Usage with a boolean identifier
+ * You may obtain the event data from the `data` property and/or the `listener` callback.
+ *
+ * @example
  * ```ts
- *	useEvent(props.id && `room:${props.id}`, 'new_message', handleMessage);
- * ```
- * @example -  Usage with a channel topic.
- * ```ts
- *	useEvent('room:lobby', 'new_message', handleMessage);
- * ```
- * @example - Usage with an existing channel.
- * ```ts
- * 	const channel = useChannel('room:lobby');
- *	useEvent(channel, 'new_message', handleMessage);
+ * 	type NewMessageEvent = {
+ *			event: 'new_message';
+ *			data: { message: string };
+ * 	};
+ *
+ *	const [channel, state] = useChannel('room:1');
+ *	const { data } = useEvent<NewMessageEvent>(channel, 'new_message', handleMessage);
  * ```
  *
- * @param identifier - The identifier can be a topic `string` or a `Channel`.
- * In the case of a topic string, the hook will attempt to look for and connec to an existing instance
- * of the channel on the socket. If one does not exist, it will create a new instance and join the channel.
- * Additionally, if the identifier is a boolean expression that evaluates to `false`, the hook will not
- * attempt to connect the identifier to the socket.
+ *
+ * @param channel - A `Channel` provided by `useChannel`.
  * @param event - The event name to listen for.
  * @param listener - The callback function to invoke when the event is received.
+ *
+ * @returns The data from the event.
  */
 export function useEvent<Event extends EventAction>(
-	identifier: Channel | string | undefined | null,
-	event: Event['event'],
-	listener?: (response: Event['data']) => void
+  channel: Channel | undefined | null,
+  event: Event['event'],
+  listener?: (response: Event['data']) => void
 ): { data: Event['data'] | null } {
-	const { socket } = usePhoenix();
-	const handler = useLatest(listener);
-	const [channel, set] = useState<Channel | undefined>(findChannel(socket, event));
+  const handler = useLatest(listener);
 
-	const channelRef = useLatest(channel);
+  const [data, setData] = useState<Event['data'] | null>(null);
 
-	const [data, setData] = useState<Event['data'] | null>(null);
+  useEffect(() => {
+    if (!channel) return;
+    if (typeof event !== 'string') return;
 
-	const upsert = useCallback(
-		(topic: string): Channel | undefined => {
-			if (socket) {
-				let channel = findChannel(socket, topic);
-				if (channel) return channel;
+    const ref = channel.on(event, (message) => {
+      if (typeof handler.current === 'function') {
+        handler.current(message);
+      }
 
-				channel = socket.channel(topic, {});
-				channel.join();
-				return channel;
-			}
+      setData(message);
+    });
 
-			return undefined;
-		},
-		[socket]
-	);
+    return () => {
+      channel.off(event, ref);
+    };
+  }, [channel, event, handler]);
 
-	useEffect(() => {
-		/*
-		 * If the identifier is undefined, it indicates that a boolean expression was supplied
-		 * and the condition was not met. This prevents the socket from being initialized
-		 */
-		if (typeof identifier == 'undefined' || identifier === null) {
-			return;
-		} else if (typeof identifier == 'string') {
-			set(upsert(identifier));
-			return;
-		} else if (identifier instanceof Channel) {
-			set(identifier);
-		} else {
-			throw new Error('Invalid identifier. Must be a topic string or Channel.');
-		}
-	}, [identifier, upsert]);
-
-	useEffect(() => {
-		if (!channelRef.current) return;
-
-		const ref = channelRef.current.on(event, (message) => {
-			setData(message);
-
-			if (typeof handler.current === 'function') {
-				handler.current(message);
-			}
-		});
-
-		return () => {
-			channelRef.current?.off(event, ref);
-			set(undefined);
-		};
-	}, [channel, event, handler]);
-
-	return { data };
+  return { data };
 }
