@@ -2,7 +2,9 @@
   "name": "use-phoenix",
   "version": "0.0.1-alpha.7",
   "description": "React hooks for the Phoenix Framework",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],

@@ -1,3 +1,18 @@
+# 0.0.1-alpha.8
+
+2024-2-13
+
+### Breaking changes
+
+- Completely remove calling `useEvent` with a `string` channel topic.
+  - The benefit was reusing existing channels but we now do it by default and usually you want access to important channel functions like `push` and `leave` which you simply did not get if you used a channel `string`.
+
+### Additional changes
+
+- Calling `useChannel` on the same channel topic across any number of components should just work, and keep all components connected and listening. Additionally, the state object should be consistent across all `useChannel` topics across components.
+
+- expose an `isConnected` boolean inside `usePhoenix` to know when the socket has officially connected. This is useful for example, in cases when you want to request data with push right when the socket connects, and you dont want to specify the socket itself as a dependency to the useEffect since it would trigger the useEffect many times.
+
 # 0.0.1-alpha.7
 
 2023-12-27
