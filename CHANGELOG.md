@@ -1,11 +1,13 @@
-# 0.0.1-alpha.8
+# 0.0.1
 
-2024-2-13
+2024-2-15
+
+I have been using this version enough in a few complex projects and has been performing very well. I'd like to move away from alpha version and just iterate versions normally. I feel the API is pretty stable at this point and I am not anticipating much more deviation except for `usePresence`. The `usePresence` hook will need to be looked at in more depth to understand the most common access patterns and provide an API that applies to the most people. Currently it deviates quite a bit from the vanilla SDK in terms of the outputted data.
 
 ### Breaking changes
 
 - Completely remove calling `useEvent` with a `string` channel topic.
-  - The benefit was reusing existing channels but we now do it by default and usually you want access to important channel functions like `push` and `leave` which you simply did not get if you used a channel `string`.
+  - The benefit was reusing existing channels but `useChannel` now does it inherently by default. Additionally you usually want access to important channel metadata and functions like `push` and `leave` which you simply did not get if you used a channel `string`. It is possible I reintroduce it in the future but it adds some more complexity and was not working consistently.
 
 ### Additional changes
 
