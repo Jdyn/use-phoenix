@@ -13,7 +13,7 @@ import { Channel as ChannelClass } from 'phoenix';
 
 import { createMeta, findChannel, pushPromise } from '../util';
 import cache from '../cache';
-
+import { cache as eventCache } from '../PhoenixProvider';
 /**
  * A hook to open a new Phoenix channel, or attach to an existing one
  * that has been opened by another component.

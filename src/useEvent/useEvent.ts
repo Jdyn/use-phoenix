@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Channel } from 'phoenix';
 import useLatest from '../useLatest';
 import { EventAction } from './types';
+import { cache } from '../PhoenixProvider';
 
 /**
  * A hook to subscribe to a Phoenix Channel event.
@@ -32,12 +33,28 @@ export function useEvent<Event extends EventAction>(
   listener?: (response: Event['data']) => void
 ): { data: Event['data'] | null } {
   const handler = useLatest(listener);
+  const [loaded, setLoaded] = useState(false);
 
   const [data, setData] = useState<Event['data'] | null>(null);
 
   useEffect(() => {
     if (!channel) return;
     if (typeof event !== 'string') return;
+
+    if (!loaded) {
+      setLoaded(true);
+
+      const data = cache.get(`${channel.topic}:${event}`);
+
+      if (data) {
+        if (typeof handler.current === 'function') {
+          handler.current(data);
+        }
+
+        // console.log('preloaded', channel.topic, event, data)
+        setData(data);
+      }
+    }
 
     const ref = channel.on(event, (message) => {
       if (typeof handler.current === 'function') {

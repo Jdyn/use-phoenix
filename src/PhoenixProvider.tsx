@@ -13,6 +13,8 @@ export type PhoenixProviderProps = {
   onError?: () => void;
 };
 
+export const cache = new Map<string, any>();
+
 export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps) {
   const { children, onOpen, onClose, onError } = props;
 
@@ -23,6 +25,20 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 
   const defaultListeners = useCallback(
     (socket: PhoenixSocket) => {
+      socket.onMessage(({ event, payload, topic }) => {
+        if (event === 'phx_reply') return;
+
+        if (event === 'phx_close') {
+          cache.forEach((_, key) => {
+            if (key.startsWith(`${topic}:`)) {
+              cache.delete(key);
+            }
+          });
+        } else {
+          cache.set(`${topic}:${event}`, payload);
+        }
+      });
+
       if (onOpen) socket.onOpen(onOpen);
       if (onClose) socket.onClose(onClose);
       if (onError) socket.onError(onError);

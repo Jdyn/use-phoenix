@@ -1,6 +1,15 @@
-import { Channel, Socket } from 'phoenix';
+import { Channel, MessageRef, Socket } from 'phoenix';
 
-export type PhoenixSocket = Socket & { channels: Channel[] };
+export type PhoenixSocket = {
+  channels: Channel[];
+  onMessage(callback: (message: {
+    event: string;
+    payload: Record<string, any>;
+    ref: MessageRef;
+    topic: string;
+    join_ref: MessageRef;
+  }) => void | Promise<void>): MessageRef;
+} & Socket;
 
 export interface SocketConnectOption {
   binaryType: BinaryType;
