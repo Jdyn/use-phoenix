@@ -2,13 +2,15 @@ import { Channel, MessageRef, Socket } from 'phoenix';
 
 export type PhoenixSocket = {
   channels: Channel[];
-  onMessage(callback: (message: {
-    event: string;
-    payload: Record<string, any>;
-    ref: MessageRef;
-    topic: string;
-    join_ref: MessageRef;
-  }) => void | Promise<void>): MessageRef;
+  onMessage(
+    callback: (message: {
+      event: string;
+      payload: Record<string, any>;
+      ref: MessageRef;
+      topic: string;
+      join_ref: MessageRef;
+    }) => void | Promise<void>
+  ): MessageRef;
 } & Socket;
 
 export interface SocketConnectOption {

@@ -1,5 +1,5 @@
 # use-phoenix
-
+The library will not follow semver until version `1.0.0`. expect potential breaking changes on any new versions until then.
 ## Connecting to your Phoenix Socket
 
 Wrap the intended part of your application with a `PhoenixProvider`.
@@ -20,7 +20,7 @@ return (
   <PhoenixProvider
     url="ws://localhost:4000/socket"
     options={{
-      params: { token: 'xyz' }
+      params: { token: '123' }
     }}
   >
     ...
@@ -92,8 +92,8 @@ interface PingResponse {
   const { data } = useEvent<PongEvent>(channel, data?.secret && `pong:${data.secret}`);
 
   const handleClick = () => {
-    // ok is typed according to PingResponse
     const { ok } = await push<PingEvent, PingResponse>('ping', { body: 'Hello World' })
+    //      ^^ Typed according to PingResponse
   }
 
   return (
@@ -163,6 +163,40 @@ push('new_msg', { msg: 'Hello World' });
 leave();
 ```
 
+## Waiting for another `useChannel` to make the connection
+Consider the case where you are using `useChannel` in multiple components, but only one of the components really has the necessary `params` to connect to the channel topic, and you just want the other components to work with the channel after the channel has been connected. The problem is, if the component that does not have access to connection params occurs earlier in the react tree, it will naturally try to connect and be unable to because the required params are contained within a later component in the tree.
+
+What you can do is indicate `useChannel` to `yield` and wait for another `useChannel` to connect and once it connects, the yielded `useChannel` will connect to the instance and operate as usual. Note if no connection is ever made, a yielded `useChannel` will never connect.
+
+### Example
+
+```tsx
+// map.tsx component with access to important coordinates
+const [channel] = useChannel('map:1', { params: { coordinates: [0, 0] }});
+//                                                             ^^^^^
+//                                                   value only known by main.tsx
+
+// Layout.tsx which doesnt have access to the coordinates...
+const [channel] = useChannel('map:1', { yield: true });
+//                                      ^^^^^
+// this channel will wait until map.tsx connects instead of connecting itself.
+// thus allowing you to not need params
+```
+
+## Leaving a channel
+`useChannel` does not automatically `leave` the channel when the hook unmounts. That is, the socket will continue to listen in on the channel. It is best to handle leaving the channel explicitly using `leave` if you would like to leave the channel on component unmounts:
+
+  ```ts
+  const [channel, { leave }] = useChannel('chat:lobby');
+
+  useEffect(() => {
+    return () => {
+      leave();
+    };
+  }, [leave]);
+  ```
+
+
 ## usePresence
 
 Quickly setup presence tracking by connecting to your presence channel
@@ -206,17 +240,3 @@ const users = usePresence<void, { lastSeen: string }>('room:lobby');
 // typed lastSeen
 users[0].metas.lastSeen;
 ```
-
-## Notes
-
-- `useChannel` does not automatically `leave` the channel when the hook unmounts. That is, the socket will continue to listen in on the channel. It is best to handle leaving the channel explicitly using `leave` if you would like to leave the channel on component unmounts:
-
-  ```ts
-  const [channel, { leave }] = useChannel('chat:lobby');
-
-  useEffect(() => {
-    return () => {
-      leave();
-    };
-  }, [leave]);
-  ```

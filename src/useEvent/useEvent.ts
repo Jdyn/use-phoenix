@@ -51,7 +51,6 @@ export function useEvent<Event extends EventAction>(
           handler.current(data);
         }
 
-        // console.log('preloaded', channel.topic, event, data)
         setData(data);
       }
     }

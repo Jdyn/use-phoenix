@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useLatest from '../useLatest';
-import { usePhoenix } from '../usePhoenix';
+import { PhoenixSocket, usePhoenix } from '../usePhoenix';
 import type {
   Channel,
   ChannelMeta,
@@ -12,8 +12,8 @@ import type {
 import { Channel as ChannelClass } from 'phoenix';
 
 import { createMeta, findChannel, pushPromise } from '../util';
-import cache from '../cache';
-import { cache as eventCache } from '../PhoenixProvider';
+import cache, { defaultMeta } from '../cache';
+
 /**
  * A hook to open a new Phoenix channel, or attach to an existing one
  * that has been opened by another component.
@@ -30,16 +30,18 @@ import { cache as eventCache } from '../PhoenixProvider';
  *
  * @example
  * ```ts
- *	const [channel, { push, leave, data }] = useChannel('room:1');
+ *	const [channel, { push, leave, data }] = useChannel('room:1', { params: { token: '123' } });
  *	useEvent(channel, 'new_message', handleMessage);
  * ```
  *
  * @param topic - the topic to connect to.
- * @param params - The params to send when joining the channel.
+ * @param options - options for the channel.
+ *  - `params` - The params to send to the server when joining the channel.
+ *  - `yield` - A boolean indicating whether the channel should wait until another `useChannel` hook has connected to the topic instead of trying to connect itself.
  */
 export function useChannel<Params extends ChannelParams, JoinPayload>(
   topic: string | boolean | null | undefined,
-  params?: ChannelOptions<Params>
+  _options?: ChannelOptions<Params>
 ): [Channel | undefined, ChannelState<JoinPayload>] {
   const { socket, isConnected } = usePhoenix();
 
@@ -49,72 +51,112 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     cache.get<JoinPayload>(topic as string)
   );
 
-  const paramsRef = useLatest(params);
+  const optionsRef = useLatest(_options);
 
-  useEffect(() => {
-    if (!isConnected) return;
-    if (typeof topic !== 'string') return;
-    if (!socket) return;
+  const messageRef = useRef<string | undefined>(undefined);
 
-    const params = paramsRef.current?.params ?? {};
-
-    const existingChannel = findChannel(socket, topic);
-
-    if (existingChannel) {
+  const handleJoin = useCallback(
+    (_channel: Channel) => {
       /* If we find an existing channel with this topic,
-        we reconect our internal reference. */
-      set(existingChannel);
-      channelRef.current = existingChannel;
+          we reconect our internal reference. */
+      set(channel);
+      channelRef.current = _channel;
 
-      if (existingChannel.state === 'joining') {
-        existingChannel.on('phx_reply', () => {
+      if (_channel.state === 'joining') {
+        _channel.on('phx_reply', () => {
           /* It is possible that we found an existing channel
-						but it has not yet fully joined. In this case, we want to
-						listen in on phx_reply, to update our meta from the
-						useChannel that is actually doing the join()  */
+              but it has not yet fully joined. In this case, we want to
+              listen in on phx_reply, to update our meta from the
+              useChannel that is actually doing the join()  */
           setMeta(cache.get<JoinPayload>(topic));
         });
       } else {
         setMeta(cache.get<JoinPayload>(topic));
       }
+    },
+    [set, setMeta]
+  );
 
+  const createChannel = useCallback(
+    (_topic: string, _socket: PhoenixSocket) => {
+      const params = optionsRef.current?.params ?? {};
+
+      const _channel = _socket.channel(_topic, params);
+
+      _channel
+        .join()
+        .receive('ok', (response: JoinPayload) => {
+          const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
+          cache.insert(_topic, meta);
+          setMeta(meta);
+        })
+        .receive('error', (error) => {
+          setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
+        })
+        .receive('timeout', () => {
+          setMeta(
+            createMeta<JoinPayload>(false, false, true, null, undefined, 'connection timeout')
+          );
+        });
+
+      _channel.onError((error) => {
+        setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
+      });
+
+      _channel.on('phx_error', () => {
+        setMeta(
+          createMeta<JoinPayload>(false, false, true, null, undefined, 'internal server error')
+        );
+      });
+
+      set(_channel);
+      channelRef.current = _channel;
+    },
+    [set, setMeta]
+  );
+
+  useEffect(() => {
+    if (!socket) return;
+    if (!isConnected) return;
+    if (typeof topic !== 'string') return;
+
+    const isLazy = optionsRef.current?.yield ?? false;
+    if (isLazy) return;
+
+    const existingChannel = findChannel(socket, topic);
+
+    if (existingChannel) {
+      handleJoin(existingChannel);
       return;
     }
 
-    const _channel = socket.channel(topic, params);
-
-    _channel
-      .join()
-      .receive('ok', (response: JoinPayload) => {
-        const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
-        cache.insert(topic, meta);
-        setMeta(meta);
-      })
-      .receive('error', (error) => {
-        setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
-      })
-      .receive('timeout', () => {
-        setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'connection timeout'));
-      });
-
-    _channel.onError((error) => {
-      setMeta(createMeta<JoinPayload>(false, false, true, error, null, 'error'));
-    });
-
-    _channel.on('phx_error', () => {
-      setMeta(createMeta<JoinPayload>(false, false, true, null, null, 'internal server error'));
-      /**
-       * If the channel is in an error state, we want to leave the channel.
-       * So we do not attempt to rejoin infinitely.
-       *
-       * Disabling this for now, could make it opt-in.
-       */
-      // if (channel) channel.leave();
-    });
-
-    set(_channel);
-    channelRef.current = _channel;
+    createChannel(topic, socket);
   }, [isConnected, topic, setMeta, set]);
+
+  useEffect(() => {
+    const isLazy = optionsRef.current?.yield ?? false;
+
+    if (!isLazy) return;
+    if (!socket) return;
+    if (!isConnected) return;
+    if (typeof topic !== 'string') return;
+
+    messageRef.current = socket.onMessage(({}) => {
+      if (channelRef.current === null) {
+        const channel = findChannel(socket, topic as string);
+        if (channel) handleJoin(channel);
+      }
+    });
+  }, [isConnected, topic]);
+
+  useEffect(() => {
+    const isLazy = optionsRef.current?.yield ?? false;
+
+    if (isLazy && channel && socket && messageRef.current) {
+      socket.off([messageRef.current]);
+      messageRef.current = undefined;
+    }
+  }, [topic, channel]);
 
   /**
    * Pushes an event to the channel.
@@ -148,6 +190,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     if (channelRef.current instanceof ChannelClass) {
       channelRef.current.leave();
       set(undefined);
+      setMeta(defaultMeta);
     }
   }, []);
 

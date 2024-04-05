@@ -10,7 +10,7 @@ export type ChannelState<JoinResposne> = Merge<
 
 export type PushEvent = {
   event: string;
-  data?: Record<string, any>;
+  data?: any;
 };
 
 export type ChannelStatus =
@@ -22,7 +22,7 @@ export type ChannelStatus =
   | 'closed';
 
 export type ChannelMeta<JoinResposne> = {
-  data: JoinResposne | null;
+  data: JoinResposne | undefined;
   status: ChannelStatus;
   isSuccess: boolean;
   isLoading: boolean;
@@ -36,7 +36,24 @@ export type PushFunction = <Event extends PushEvent, PushResponse = any>(
 ) => Promise<PushResponse>;
 
 export type ChannelOptions<Params = undefined> = {
+  /**
+   * The params to send to the server when joining the channel.
+   */
   params?: Params extends Record<string, any> ? Params : undefined;
+  /**
+   * A boolean indicating whether the channel should wait until another
+   * `useChannel` hook has connected to the topic instead of trying to
+   * connect itself.
+   *
+   * This is useful for when you have multiple components that need to interact
+   * with the same channel and only one of them should be responsible for
+   * opening the channel with the correct data.
+   *
+   * Note that this option will ignore any `params` given if set to `true`.
+   * Params should be passed to the `useChannel` hook that is meant to connect.
+   * If there is no non-lazy `useChannel` that connects, this hook will never connect.
+   */
+  yield?: boolean;
 };
 
 export type ChannelParams = Record<string, any>;

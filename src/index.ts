@@ -3,6 +3,7 @@ export { useChannel } from './useChannel';
 export { useEvent } from './useEvent';
 export { usePhoenix } from './usePhoenix';
 export { usePresence } from './usePresence';
+export { useLazyChannel } from './useLazyChannel';
 
 export type { Channel, ChannelMeta, ChannelState, ChannelStatus, PushFunction } from './useChannel';
 

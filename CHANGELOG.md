@@ -1,3 +1,22 @@
+# 0.0.2
+
+2024-4-5
+
+### Breaking changes
+- before a channel connects, `data` is now `undefined` rather than `null`
+
+- **basic `useEvent` data caching**
+
+  The last response from any `useEvent` is cached across all instances. This means that if if you recieve any event for a channel topic, and for example the `useEvent` hook unmounts, once it remounts, it will instantly load the last recieved data for the given `event`.
+
+  Previously if you recieved an event and the hook unmounted and remounted, the data stored in the `useEvent` hook was lost and you have needed to recieve the event again to get the data back.
+
+  Once you leave a channel using `leave()` all cached data for the `useEvent` will be cleared.
+
+### Additional changes
+- `useChannel` now accepts a `yield` option
+
+  yield will force the channel to wait for another instance of `useChannel` to connect with the necessary params and then connect itself to the channel for regular usage. See the docs for more information.
 # 0.0.1
 
 2024-2-15

@@ -2,8 +2,8 @@ import { ChannelMeta } from './useChannel';
 
 export const cache = new Map<string, ChannelMeta<any>>();
 
-const defaultMeta: ChannelMeta<any> = {
-  data: null,
+export const defaultMeta: ChannelMeta<any> = {
+  data: undefined,
   status: 'joining',
   isSuccess: false,
   isLoading: true,
