@@ -59,7 +59,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     (_channel: Channel) => {
       /* If we find an existing channel with this topic,
           we reconect our internal reference. */
-      set(channel);
+      set(_channel);
       channelRef.current = _channel;
 
       if (_channel.state === 'joining') {
@@ -112,7 +112,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
       set(_channel);
       channelRef.current = _channel;
     },
-    [set, setMeta]
+    []
   );
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     }
 
     createChannel(topic, socket);
-  }, [isConnected, topic, setMeta, set]);
+  }, [isConnected, topic, createChannel, handleJoin]);
 
   useEffect(() => {
     const isLazy = optionsRef.current?.yield ?? false;
@@ -141,13 +141,14 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     if (!isConnected) return;
     if (typeof topic !== 'string') return;
 
-    messageRef.current = socket.onMessage(({}) => {
-      if (channelRef.current === null) {
+    messageRef.current = socket.onMessage(({ topic: _topic }) => {
+      if (channelRef.current === null && _topic === topic) {
+
         const channel = findChannel(socket, topic as string);
         if (channel) handleJoin(channel);
       }
     });
-  }, [isConnected, topic]);
+  }, [isConnected, topic, handleJoin]);
 
   useEffect(() => {
     const isLazy = optionsRef.current?.yield ?? false;
