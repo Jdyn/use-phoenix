@@ -62,58 +62,55 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
       set(_channel);
       channelRef.current = _channel;
 
+      const _topic = _channel.topic;
+
       if (_channel.state === 'joining') {
         _channel.on('phx_reply', () => {
           /* It is possible that we found an existing channel
               but it has not yet fully joined. In this case, we want to
               listen in on phx_reply, to update our meta from the
               useChannel that is actually doing the join()  */
-          setMeta(cache.get<JoinPayload>(topic));
+          setMeta(cache.get<JoinPayload>(_topic));
         });
       } else {
-        setMeta(cache.get<JoinPayload>(topic));
+        setMeta(cache.get<JoinPayload>(_topic));
       }
     },
     [set, setMeta]
   );
 
-  const createChannel = useCallback(
-    (_topic: string, _socket: PhoenixSocket) => {
-      const params = optionsRef.current?.params ?? {};
+  const createChannel = useCallback((_topic: string, _socket: PhoenixSocket) => {
+    const params = optionsRef.current?.params ?? {};
 
-      const _channel = _socket.channel(_topic, params);
+    const _channel = _socket.channel(_topic, params);
 
-      _channel
-        .join()
-        .receive('ok', (response: JoinPayload) => {
-          const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
-          cache.insert(_topic, meta);
-          setMeta(meta);
-        })
-        .receive('error', (error) => {
-          setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
-        })
-        .receive('timeout', () => {
-          setMeta(
-            createMeta<JoinPayload>(false, false, true, null, undefined, 'connection timeout')
-          );
-        });
-
-      _channel.onError((error) => {
+    _channel
+      .join()
+      .receive('ok', (response: JoinPayload) => {
+        const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
+        cache.insert(_topic, meta);
+        setMeta(meta);
+      })
+      .receive('error', (error) => {
         setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
+      })
+      .receive('timeout', () => {
+        setMeta(createMeta<JoinPayload>(false, false, true, null, undefined, 'connection timeout'));
       });
 
-      _channel.on('phx_error', () => {
-        setMeta(
-          createMeta<JoinPayload>(false, false, true, null, undefined, 'internal server error')
-        );
-      });
+    _channel.onError((error) => {
+      setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
+    });
 
-      set(_channel);
-      channelRef.current = _channel;
-    },
-    []
-  );
+    _channel.on('phx_error', () => {
+      setMeta(
+        createMeta<JoinPayload>(false, false, true, null, undefined, 'internal server error')
+      );
+    });
+
+    set(_channel);
+    channelRef.current = _channel;
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -124,11 +121,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     if (isLazy) return;
 
     const existingChannel = findChannel(socket, topic);
-
-    if (existingChannel) {
-      handleJoin(existingChannel);
-      return;
-    }
+    if (existingChannel) return handleJoin(existingChannel);
 
     createChannel(topic, socket);
   }, [isConnected, topic, createChannel, handleJoin]);
@@ -143,7 +136,6 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
 
     messageRef.current = socket.onMessage(({ topic: _topic }) => {
       if (channelRef.current === null && _topic === topic) {
-
         const channel = findChannel(socket, topic as string);
         if (channel) handleJoin(channel);
       }
@@ -151,13 +143,15 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
   }, [isConnected, topic, handleJoin]);
 
   useEffect(() => {
-    const isLazy = optionsRef.current?.yield ?? false;
+    return () => {
+      const isLazy = optionsRef.current?.yield ?? false;
 
-    if (isLazy && channel && socket && messageRef.current) {
-      socket.off([messageRef.current]);
-      messageRef.current = undefined;
-    }
-  }, [topic, channel]);
+      if (isLazy && channel && socket && messageRef.current) {
+        socket.off([messageRef.current]);
+        messageRef.current = undefined;
+      }
+    };
+  }, []);
 
   /**
    * Pushes an event to the channel.

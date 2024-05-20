@@ -1,8 +1,7 @@
-import useLatest from './useLatest';
 import { PhoenixContext } from './usePhoenix';
 import { PhoenixSocket, SocketConnectOption } from './usePhoenix/types';
 import { Socket } from 'phoenix';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export type PhoenixProviderProps = {
   url?: string;
@@ -21,7 +20,7 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
   const [socket, set] = useState<PhoenixSocket | null>(null);
   const [isConnected, setConnected] = useState(false);
 
-  const socketRef = useLatest(socket);
+  const socketRef = useRef(socket);
 
   const defaultListeners = useCallback(
     (socket: PhoenixSocket) => {
@@ -58,12 +57,13 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
     (url: string, options?: Partial<SocketConnectOption>): PhoenixSocket => {
       const socket = new Socket(url, options ?? {}) as PhoenixSocket;
       socket.connect();
+      socketRef.current = socket;
       set(socket);
       defaultListeners(socket);
 
       return socket;
     },
-    [defaultListeners]
+    []
   );
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
     const socket = connect(url, options);
 
     return () => {
-      socket.disconnect();
+      if (url) socket.disconnect();
     };
   }, [url, options, connect]);
 
