@@ -14,7 +14,7 @@ export type PhoenixProviderProps = {
 
 export const cache = new Map<string, any>();
 
-export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps) {
+export function PhoenixProvider({ url, options = {}, ...props }: PhoenixProviderProps) {
   const { children, onOpen, onClose, onError } = props;
 
   const [socket, set] = useState<PhoenixSocket | null>(null);
@@ -82,12 +82,3 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
     </PhoenixContext.Provider>
   );
 }
-
-PhoenixProvider.defaultProps = {
-  options: {},
-  onOpen: null,
-  onClose: null,
-  onError: null,
-  connect: true,
-  children: null
-};
