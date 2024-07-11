@@ -31,11 +31,11 @@ export function useEvent<Event extends EventAction>(
   channel: Channel | undefined | null,
   event: Event['event'],
   listener?: (response: Event['data']) => void
-): { data: Event['data'] | null } {
+): { data: Event['data'] | undefined } {
   const handler = useLatest(listener);
   const [loaded, setLoaded] = useState(false);
 
-  const [data, setData] = useState<Event['data'] | null>(null);
+  const [data, setData] = useState<Event['data'] | undefined>(cache.get(`${channel?.topic}:${event}`));
 
   useEffect(() => {
     if (!channel) return;
