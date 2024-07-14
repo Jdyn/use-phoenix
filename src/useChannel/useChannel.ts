@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useLatest from '../useLatest';
-import { PhoenixSocket, usePhoenix } from '../usePhoenix';
+import { usePhoenix } from '../usePhoenix';
 import type {
   Channel,
   ChannelMeta,
@@ -79,39 +79,6 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     [set, setMeta]
   );
 
-  const createChannel = useCallback((_topic: string, _socket: PhoenixSocket) => {
-    const params = optionsRef.current?.params ?? {};
-
-    const _channel = _socket.channel(_topic, params);
-
-    _channel
-      .join()
-      .receive('ok', (response: JoinPayload) => {
-        const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
-        cache.insert(_topic, meta);
-        setMeta(meta);
-      })
-      .receive('error', (error) => {
-        setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
-      })
-      .receive('timeout', () => {
-        setMeta(createMeta<JoinPayload>(false, false, true, null, undefined, 'connection timeout'));
-      });
-
-    _channel.onError((error) => {
-      setMeta(createMeta<JoinPayload>(false, false, true, error, undefined, 'error'));
-    });
-
-    _channel.on('phx_error', () => {
-      setMeta(
-        createMeta<JoinPayload>(false, false, true, null, undefined, 'internal server error')
-      );
-    });
-
-    set(_channel);
-    channelRef.current = _channel;
-  }, []);
-
   useEffect(() => {
     if (!socket) return;
     if (!isConnected) return;
@@ -123,8 +90,91 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     const existingChannel = findChannel(socket, topic);
     if (existingChannel) return handleJoin(existingChannel);
 
-    createChannel(topic, socket);
-  }, [isConnected, topic, createChannel, handleJoin]);
+    const params = optionsRef.current?.params ?? {};
+
+    const _channel = socket.channel(topic, params);
+
+    const recieveOk = (response: JoinPayload) => {
+      const meta = createMeta<JoinPayload>(true, false, false, null, response, 'success');
+      cache.insert(topic, meta);
+      setMeta(meta);
+    };
+
+    const recieveError = (error: any) => {
+      const meta = createMeta<JoinPayload>(false, false, true, error, undefined, 'error');
+      setMeta(meta);
+    };
+
+    const recieveTimeout = () => {
+      setMeta(createMeta<JoinPayload>(false, false, true, null, undefined, 'connection timeout'));
+    };
+
+    const onError = (error: any) => {
+      const meta = createMeta<JoinPayload>(false, false, true, error, undefined, 'error');
+      setMeta(meta);
+    };
+
+    const onPhxError = () => {
+      const meta = createMeta<JoinPayload>(
+        false,
+        false,
+        true,
+        null,
+        undefined,
+        'internal server error'
+      );
+
+      setMeta(meta);
+    };
+
+    _channel
+      .join()
+      .receive('ok', recieveOk)
+      .receive('error', recieveError)
+      .receive('timeout', recieveTimeout);
+
+    _channel.onError(onError);
+    _channel.on('phx_error', onPhxError);
+
+    set(_channel);
+    channelRef.current = _channel;
+
+    return () => {
+      if (_channel) {
+        /*
+          So the problem is that these .recieve() functions stay persisted even after this hook
+          has potentially moved on to an entirely different topic.
+
+          So consider the following scenario:
+            - we connect on topic 'room:1' and we error. That is, we aren't permitted to enter.
+            - Then, using the same hook, we connect to room:2 and we are permitted.
+            - Since the first one errored, **and the socket has configured rejoin() timeouts**,
+              the socket will attempt to rejoin 'room:1' even though we have already moved
+              on to 'room:2'. The rejoin attempt will actually call the recieve functions
+              and be able to update the state of the hook, even though we are no longer
+              interested in that topic.
+
+            - So, we will be in a success state after joining 'room:2', and then rejoin will
+              trigger and the recieve('ok') will be called, and since it's for room:1, it will
+              update the state of the hook back into an error state.
+
+            - Here, once the topic changes, we remove all recieve hooks to prevent this from happening.
+            - So the rejoin() attempt will be called, but this hook won't be listening!
+
+          This can be entirely avoided if, the hook-user correctly calls leave() when the `room:1` join
+          fails, but that's not a guarantee, and I think the expected behavior is that the hook no
+          longer cares about it's previous topic.
+        */
+        // @ts-ignore
+        if (_channel.joinPush) _channel.joinPush.recHooks = [];
+
+        
+        _channel.off('phx_error');
+        _channel.off('phx_close');
+        _channel.off('phx_reply');
+      }
+    };
+  }, [isConnected, topic, handleJoin]);
 
   useEffect(() => {
     const isLazy = optionsRef.current?.yield ?? false;
