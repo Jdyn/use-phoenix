@@ -51,9 +51,9 @@ export type ChannelOptions<Params = undefined> = {
    *
    * Note that this option will ignore any `params` given if set to `true`.
    * Params should be passed to the `useChannel` hook that is meant to connect.
-   * If there is no non-lazy `useChannel` that connects, this hook will never connect.
+   * If there is no non-passive `useChannel` that connects, this hook will never connect.
    */
-  yield?: boolean;
+  passive?: boolean;
 };
 
 export type ChannelParams = Record<string, any>;

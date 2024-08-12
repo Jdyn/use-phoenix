@@ -1,5 +1,10 @@
 # use-phoenix
 The library will not follow semver until version `1.0.0`. expect potential breaking changes on any new versions until then.
+
+This library deviates in a few areas to better fit with react's paradigm. The biggest deviations are as follows:
+
+1. In Phoenix.js, "opening" a new instance of a channel topic will close any previous instance. This makes sense as we only want one source of truth, and we don't want to recieve duplicate events. This is still the case in `use-phoenix`, however calling `useChannel` multiple times does not create new instances of a channel like how calling `new Channel()` does. In this case, subsequent `useChannel` hooks will attach to the already existing channel if it exists, otherwise it will create it.
+
 ## Connecting to your Phoenix Socket
 
 Wrap the intended part of your application with a `PhoenixProvider`.
@@ -166,7 +171,7 @@ leave();
 ## Waiting for another `useChannel` to make the connection
 Consider the case where you are using `useChannel` in multiple components, but only one of the components really has the necessary `params` to connect to the channel topic, and you just want the other components to work with the channel after the channel has been connected. The problem is, if the component that does not have access to connection params occurs earlier in the react tree, it will naturally try to connect and be unable to because the required params are contained within a later component in the tree.
 
-What you can do is indicate `useChannel` to `yield` and wait for another `useChannel` to connect and once it connects, the yielded `useChannel` will connect to the instance and operate as usual. Note if no connection is ever made, a yielded `useChannel` will never connect.
+What you can do is indicate `useChannel` to become `passive` and wait for another `useChannel` to connect and once it connects, the passive `useChannel` will connect to the instance and operate as usual. Note if no connection is ever made, a passive `useChannel` will never connect.
 
 ### Example
 
@@ -177,7 +182,7 @@ const [channel] = useChannel('map:1', { params: { coordinates: [0, 0] }});
 //                                                   value only known by main.tsx
 
 // Layout.tsx which doesnt have access to the coordinates...
-const [channel] = useChannel('map:1', { yield: true });
+const [channel] = useChannel('map:1', { passive: true });
 //                                      ^^^^^
 // this channel will wait until map.tsx connects instead of connecting itself.
 // thus allowing you to not need params

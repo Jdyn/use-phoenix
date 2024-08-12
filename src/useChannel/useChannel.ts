@@ -37,7 +37,7 @@ import cache, { defaultMeta } from '../cache';
  * @param topic - the topic to connect to.
  * @param options - options for the channel.
  *  - `params` - The params to send to the server when joining the channel.
- *  - `yield` - A boolean indicating whether the channel should wait until another `useChannel` hook has connected to the topic instead of trying to connect itself.
+ *  - `passive` - A boolean indicating whether the channel should wait until another `useChannel` hook has connected to the topic instead of trying to connect itself.
  */
 export function useChannel<Params extends ChannelParams, JoinPayload>(
   topic: string | boolean | null | undefined,
@@ -84,8 +84,8 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     if (!isConnected) return;
     if (typeof topic !== 'string') return;
 
-    const isLazy = optionsRef.current?.yield ?? false;
-    if (isLazy) return;
+    const isPassive = optionsRef.current?.passive ?? false;
+    if (isPassive) return;
 
     const existingChannel = findChannel(socket, topic);
     if (existingChannel) return handleJoin(existingChannel);
@@ -168,7 +168,7 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
         // @ts-ignore
         if (_channel.joinPush) _channel.joinPush.recHooks = [];
 
-        
+
         _channel.off('phx_error');
         _channel.off('phx_close');
         _channel.off('phx_reply');
@@ -177,9 +177,9 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
   }, [isConnected, topic, handleJoin]);
 
   useEffect(() => {
-    const isLazy = optionsRef.current?.yield ?? false;
+    const isPassive = optionsRef.current?.passive ?? false;
 
-    if (!isLazy) return;
+    if (!isPassive) return;
     if (!socket) return;
     if (!isConnected) return;
     if (typeof topic !== 'string') return;
@@ -194,9 +194,9 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
 
   useEffect(() => {
     return () => {
-      const isLazy = optionsRef.current?.yield ?? false;
+      const isPassive = optionsRef.current?.passive ?? false;
 
-      if (isLazy && channel && socket && messageRef.current) {
+      if (isPassive && channel && socket && messageRef.current) {
         socket.off([messageRef.current]);
         messageRef.current = undefined;
       }
