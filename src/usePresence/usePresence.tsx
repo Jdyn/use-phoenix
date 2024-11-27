@@ -17,14 +17,16 @@ export function usePresence<PayloadType, MetasType = Metas>(
       channel.on('presence_state', (newState) => {
         _setPresence((prevState) => {
           if (Object.keys(prevState).length === 0) return newState;
-          return Presence.syncState(prevState, newState);
+          const nextState = {...prevState};
+          return Presence.syncState(nextState, newState);
         });
       });
 
       channel.on('presence_diff', (newDiff) => {
         _setPresence((prevState) => {
-          if (Object.keys(prevState).length === 0) return prevState;
-          return Presence.syncDiff(prevState, newDiff);
+          // Note that prevState might be empty, we still need to sync it
+          const nextState = {...prevState};
+          return Presence.syncDiff(nextState, newDiff);
         });
       });
 
