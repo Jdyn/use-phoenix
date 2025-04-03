@@ -5,6 +5,7 @@ export const PhoenixContext = React.createContext<{
   socket: PhoenixSocket | null;
   connect: ConnectFunction;
   isConnected: boolean;
+  isError: boolean;
 } | null>(null);
 
 export const usePhoenix = () => {

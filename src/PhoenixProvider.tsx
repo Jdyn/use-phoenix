@@ -19,6 +19,7 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 
   const [socket, set] = useState<PhoenixSocket | null>(null);
   const [isConnected, setConnected] = useState(false);
+  const [isError, setError] = useState(false);
 
   const socketRef = useRef(socket);
 
@@ -44,14 +45,17 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
 
       socket.onOpen(() => {
         setConnected(true);
+        setError(false);
       });
 
       socket.onClose(() => {
         setConnected(false);
+        setError(false);
       });
 
       socket.onError(() => {
         setConnected(false);
+        setError(true);
       });
     },
     [onClose, onError, onOpen]
@@ -81,7 +85,7 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
   }, [url, options, connect]);
 
   return (
-    <PhoenixContext.Provider value={{ socket: socketRef.current, connect, isConnected }}>
+    <PhoenixContext.Provider value={{ socket: socketRef.current, connect, isConnected, isError }}>
       {children}
     </PhoenixContext.Provider>
   );
