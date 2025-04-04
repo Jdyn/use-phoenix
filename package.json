@@ -1,6 +1,6 @@
 {
   "name": "use-phoenix",
-  "version": "0.0.3",
+  "version": "0.0.4-alpha.0",
   "description": "React hooks for the Phoenix Framework",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
