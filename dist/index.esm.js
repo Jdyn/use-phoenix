@@ -1,4 +1,4 @@
-import require$$0, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import require$$0, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { Socket, Channel, Presence } from 'phoenix';
 
 function _extends() {
@@ -85,6 +85,9 @@ function PhoenixProvider(_ref) {
     isError = _useState3[0],
     setError = _useState3[1];
   var socketRef = useRef(socket);
+  var _options = useMemo(function () {
+    return options;
+  }, [options]);
   var defaultListeners = useCallback(function (socket) {
     socket.onMessage(function (_ref2) {
       var event = _ref2.event,
@@ -127,11 +130,11 @@ function PhoenixProvider(_ref) {
   }, []);
   useEffect(function () {
     if (!url) return;
-    var socket = connect(url, options || {});
+    var socket = connect(url, _options || {});
     return function () {
       if (url) socket.disconnect();
     };
-  }, [url, options, connect]);
+  }, [url, _options, connect]);
   return jsxRuntimeExports.jsx(PhoenixContext.Provider, {
     value: {
       socket: socketRef.current,
@@ -261,8 +264,12 @@ function useChannel(topic, _options) {
     if (typeof topic !== 'string') return;
     var isPassive = (_optionsRef$current$p = (_optionsRef$current = optionsRef.current) == null ? void 0 : _optionsRef$current.passive) != null ? _optionsRef$current$p : false;
     if (isPassive) return;
-    var existingChannel = findChannel(socket, topic);
-    if (existingChannel) return handleJoin(existingChannel);
+    // Reusing the exising channel doesn't seem to work
+    // when re-connecting to the socket after a disconnect.
+    // const existingChannel = findChannel(socket, topic);
+    // if (existingChannel) {
+    //   return handleJoin(existingChannel);
+    // }
     var params = (_optionsRef$current$p2 = (_optionsRef$current2 = optionsRef.current) == null ? void 0 : _optionsRef$current2.params) != null ? _optionsRef$current$p2 : {};
     var _channel = socket.channel(topic, params);
     var recieveOk = function recieveOk(response) {
@@ -314,9 +321,6 @@ function useChannel(topic, _options) {
         */
         // @ts-ignore
         if (_channel.joinPush) _channel.joinPush.recHooks = [];
-        _channel.off('phx_error');
-        _channel.off('phx_close');
-        _channel.off('phx_reply');
       }
     };
   }, [isConnected, topic, handleJoin]);

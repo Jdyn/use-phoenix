@@ -87,8 +87,13 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
     const isPassive = optionsRef.current?.passive ?? false;
     if (isPassive) return;
 
-    const existingChannel = findChannel(socket, topic);
-    if (existingChannel) return handleJoin(existingChannel);
+    // Reusing the exising channel doesn't seem to work
+    // when re-connecting to the socket after a disconnect.
+
+    // const existingChannel = findChannel(socket, topic);
+    // if (existingChannel) {
+    //   return handleJoin(existingChannel);
+    // }
 
     const params = optionsRef.current?.params ?? {};
 
@@ -167,11 +172,6 @@ export function useChannel<Params extends ChannelParams, JoinPayload>(
         */
         // @ts-ignore
         if (_channel.joinPush) _channel.joinPush.recHooks = [];
-
-
-        _channel.off('phx_error');
-        _channel.off('phx_close');
-        _channel.off('phx_reply');
       }
     };
   }, [isConnected, topic, handleJoin]);
