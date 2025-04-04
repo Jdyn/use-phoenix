@@ -104,20 +104,30 @@ function PhoenixProvider(_ref) {
         cache$2.set(topic + ":" + event, payload);
       }
     });
-    if (onOpen) socket.onOpen(onOpen);
-    if (onClose) socket.onClose(onClose);
-    if (onError) socket.onError(onError);
     socket.onOpen(function () {
       setConnected(true);
       setError(false);
+      /**
+       * So when the socket experiences a disconnect, the
+       * reconnect attempts will kick in. Once it suceeds,
+       * for some reason I can't seem to get the existing
+       * chhanels to work again. the `useChannel` internel
+       * refs don't seem to get updated, so all push events
+       * fail after reconnecting. Let's just clear the channels
+       * and let the hooks recreate them.
+       */
+      socket.channels = [];
+      onOpen == null || onOpen();
     });
     socket.onClose(function () {
       setConnected(false);
       setError(false);
+      onClose == null || onClose();
     });
     socket.onError(function () {
       setConnected(false);
       setError(true);
+      onError == null || onError();
     });
   }, [onClose, onError, onOpen]);
   var connect = useCallback(function (url, options) {
@@ -264,12 +274,10 @@ function useChannel(topic, _options) {
     if (typeof topic !== 'string') return;
     var isPassive = (_optionsRef$current$p = (_optionsRef$current = optionsRef.current) == null ? void 0 : _optionsRef$current.passive) != null ? _optionsRef$current$p : false;
     if (isPassive) return;
-    // Reusing the exising channel doesn't seem to work
-    // when re-connecting to the socket after a disconnect.
-    // const existingChannel = findChannel(socket, topic);
-    // if (existingChannel) {
-    //   return handleJoin(existingChannel);
-    // }
+    var existingChannel = findChannel(socket, topic);
+    if (existingChannel) {
+      return handleJoin(existingChannel);
+    }
     var params = (_optionsRef$current$p2 = (_optionsRef$current2 = optionsRef.current) == null ? void 0 : _optionsRef$current2.params) != null ? _optionsRef$current$p2 : {};
     var _channel = socket.channel(topic, params);
     var recieveOk = function recieveOk(response) {
