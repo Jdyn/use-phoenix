@@ -41,23 +41,36 @@ export function PhoenixProvider({ url, options, ...props }: PhoenixProviderProps
         }
       });
 
-      if (onOpen) socket.onOpen(onOpen);
-      if (onClose) socket.onClose(onClose);
-      if (onError) socket.onError(onError);
-
       socket.onOpen(() => {
         setConnected(true);
         setError(false);
+
+        /**
+         * So when the socket experiences a disconnect, the
+         * reconnect attempts will kick in. Once it suceeds,
+         * for some reason I can't seem to get the existing
+         * chhanels to work again. the `useChannel` internel
+         * refs don't seem to get updated, so all push events
+         * fail after reconnecting. Let's just clear the channels
+         * and let the hooks recreate them.
+         */
+        socket.channels = [];
+
+        onOpen?.();
       });
 
       socket.onClose(() => {
         setConnected(false);
         setError(false);
+
+        onClose?.();
       });
 
       socket.onError(() => {
         setConnected(false);
         setError(true);
+
+        onError?.();
       });
     },
     [onClose, onError, onOpen]
